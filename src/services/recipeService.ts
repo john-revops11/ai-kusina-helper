@@ -1,5 +1,4 @@
-
-import { database, ref, get, child, update } from './firebase';
+import { database, ref, get, child, update, remove } from './firebase';
 import type { Recipe } from '@/components/RecipeCard';
 import type { RecipeStep } from '@/components/RecipeStepCard';
 import type { Ingredient } from '@/components/IngredientItem';
@@ -145,6 +144,24 @@ export const updateRecipeImage = async (recipeId: string, imageUrl: string): Pro
     console.log(`Updated image for recipe ${recipeId}`);
   } catch (error) {
     console.error("Error updating recipe image:", error);
+    throw error;
+  }
+};
+
+export const deleteRecipe = async (recipeId: string): Promise<void> => {
+  try {
+    // Delete the recipe from the recipes node
+    await remove(ref(database, `recipes/${recipeId}`));
+    
+    // Delete associated ingredients
+    await remove(ref(database, `ingredients/${recipeId}`));
+    
+    // Delete associated steps
+    await remove(ref(database, `steps/${recipeId}`));
+    
+    console.log(`Recipe ${recipeId} deleted successfully`);
+  } catch (error) {
+    console.error("Error deleting recipe:", error);
     throw error;
   }
 };

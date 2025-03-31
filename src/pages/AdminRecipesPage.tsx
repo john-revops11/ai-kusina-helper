@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -10,7 +9,8 @@ import {
   ChevronUp,
   Image,
   Check,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,12 +38,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { 
   fetchRecipes, 
   fetchIngredientsByRecipeId,
   fetchRecipeSteps,
-  updateRecipeImage
+  updateRecipeImage,
+  deleteRecipe
 } from '@/services/recipeService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
@@ -63,6 +74,9 @@ const AdminRecipesPage = () => {
   const [newImageUrl, setNewImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [isUpdatingImage, setIsUpdatingImage] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,14 +107,12 @@ const AdminRecipesPage = () => {
     }
 
     try {
-      // Fetch ingredients
       const ingredients = await fetchIngredientsByRecipeId(recipeId);
       setRecipeIngredients(prev => ({
         ...prev,
         [recipeId]: ingredients
       }));
 
-      // Fetch steps
       const steps = await fetchRecipeSteps(recipeId);
       setRecipeSteps(prev => ({
         ...prev,
@@ -126,7 +138,6 @@ const AdminRecipesPage = () => {
   };
 
   const regenerateRecipeData = async (recipe: Recipe) => {
-    // Set regenerating state for this recipe
     setRegenerating(prev => ({ ...prev, [recipe.id]: true }));
     
     try {
@@ -135,24 +146,18 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      // Delete existing recipe data first to ensure clean regeneration
-      // Then populate with fresh AI-generated data
-      await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
+      await databasePopulationService.populateSingleRecipe(recipe.title, true);
       
       toast({
         title: "Success",
         description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
       });
       
-      // Reload all recipes to show the updated data
       await loadRecipes();
       
-      // If this recipe was expanded, reload its details
       if (expandedRecipe === recipe.id) {
-        // Remove from expanded state temporarily
         setExpandedRecipe(null);
         
-        // Clear the cached data for this recipe
         setRecipeIngredients(prev => {
           const newState = {...prev};
           delete newState[recipe.id];
@@ -173,7 +178,6 @@ const AdminRecipesPage = () => {
         variant: "destructive"
       });
     } finally {
-      // Clear regenerating state
       setRegenerating(prev => ({ ...prev, [recipe.id]: false }));
     }
   };
@@ -183,7 +187,6 @@ const AdminRecipesPage = () => {
     setNewImageUrl(recipe.imageUrl);
     setImagePreview(recipe.imageUrl);
     setImageDialogOpen(true);
-    // Focus the input after dialog opens
     setTimeout(() => {
       if (imageUrlInputRef.current) {
         imageUrlInputRef.current.focus();
@@ -204,7 +207,6 @@ const AdminRecipesPage = () => {
     try {
       await updateRecipeImage(selectedRecipe.id, newImageUrl);
       
-      // Update the recipe in the local state
       const updatedRecipes = recipes.map(r => {
         if (r.id === selectedRecipe.id) {
           return { ...r, imageUrl: newImageUrl };
@@ -228,6 +230,52 @@ const AdminRecipesPage = () => {
       });
     } finally {
       setIsUpdatingImage(false);
+    }
+  };
+
+  const confirmDelete = (recipe: Recipe, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecipeToDelete(recipe);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteRecipe = async () => {
+    if (!recipeToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteRecipe(recipeToDelete.id);
+      
+      setRecipes(recipes.filter(r => r.id !== recipeToDelete.id));
+      
+      setRecipeIngredients(prev => {
+        const newState = {...prev};
+        delete newState[recipeToDelete.id];
+        return newState;
+      });
+      
+      setRecipeSteps(prev => {
+        const newState = {...prev};
+        delete newState[recipeToDelete.id];
+        return newState;
+      });
+      
+      toast({
+        title: "Success",
+        description: `"${recipeToDelete.title}" has been deleted`,
+      });
+      
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error(`Error deleting recipe ${recipeToDelete.title}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to delete "${recipeToDelete.title}"`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setRecipeToDelete(null);
     }
   };
 
@@ -345,6 +393,14 @@ const AdminRecipesPage = () => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={(e) => confirmDelete(recipe, e)}
+                              className="text-kusina-brown hover:text-kusina-red"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => toggleRecipeExpansion(recipe.id)}
                               className="text-kusina-brown hover:text-kusina-brown/70"
                             >
@@ -438,7 +494,6 @@ const AdminRecipesPage = () => {
         </CardContent>
       </Card>
 
-      {/* Image Update Dialog */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -511,6 +566,36 @@ const AdminRecipesPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-kusina-red">Delete Recipe</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{recipeToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRecipe}
+              disabled={isDeleting}
+              className="bg-kusina-red text-white hover:bg-kusina-red/80"
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
