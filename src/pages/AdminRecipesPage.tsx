@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -232,7 +231,7 @@ const AdminRecipesPage = () => {
   };
 
   const filteredRecipes = recipes.filter(recipe => 
-    recipe.title.toLowerCase().includes(searchTerm.toLowerCase())
+    recipe?.title ? recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) : false
   );
 
   return (
