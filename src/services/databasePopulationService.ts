@@ -529,17 +529,35 @@ export const databasePopulationService = {
       const stepsData = await this.getRecipeStepsFromGemini(recipeName);
       
       // 4. Store recipe in database
-      await set(ref(database, `recipes/${recipeData.id}`), recipeData);
+      await set(ref(database, `recipes/${recipeData.id}`), {
+        title: recipeData.title,
+        description: recipeData.description,
+        category: recipeData.category,
+        prepTime: recipeData.prepTime,
+        cookTime: recipeData.cookTime,
+        difficulty: recipeData.difficulty,
+        servings: recipeData.servings,
+        imageUrl: recipeData.imageUrl,
+        instructions: recipeData.instructions
+      });
       
       // 5. Store ingredients in database
-      await set(ref(database, `ingredients/${recipeData.id}`), 
-        Object.fromEntries(ingredientsData.map(i => [i.id, i]))
-      );
+      const ingredientsObj = Object.fromEntries(ingredientsData.map(i => [i.id, {
+        name: i.name,
+        quantity: i.quantity,
+        unit: i.unit,
+        hasSubstitutions: i.hasSubstitutions
+      }]));
+      await set(ref(database, `ingredients/${recipeData.id}`), ingredientsObj);
       
       // 6. Store steps in database
-      await set(ref(database, `steps/${recipeData.id}`),
-        Object.fromEntries(stepsData.map(s => [s.id, s]))
-      );
+      const stepsObj = Object.fromEntries(stepsData.map(s => [s.id, {
+        number: s.number,
+        instruction: s.instruction,
+        timeInMinutes: s.timeInMinutes,
+        isCritical: s.isCritical || false
+      }]));
+      await set(ref(database, `steps/${recipeData.id}`), stepsObj);
       
       // 7. Get and store substitutions for ingredients that have them
       for (const ingredient of ingredientsData.filter(i => i.hasSubstitutions)) {
