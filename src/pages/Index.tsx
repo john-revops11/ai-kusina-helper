@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { CookingPot } from 'lucide-react';
+import { CookingPot, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MobileNavBar from '@/components/MobileNavBar';
 import FeaturedRecipe from '@/components/FeaturedRecipe';
@@ -9,6 +9,8 @@ import SearchBar from '@/components/SearchBar';
 import CategoryList from '@/components/CategoryList';
 import { fetchCategories, fetchRecipes } from '@/services/recipeService';
 import type { Recipe } from '@/components/RecipeCard';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +68,11 @@ const Index = () => {
           <CookingPot className="text-primary" size={24} />
           <h1 className="text-xl font-bold">AI Kusina</h1>
         </div>
+        <Link to="/admin">
+          <Button variant="ghost" size="icon">
+            <Settings size={20} />
+          </Button>
+        </Link>
       </header>
 
       {/* Main Content */}
@@ -82,7 +89,10 @@ const Index = () => {
             <FeaturedRecipe recipe={featuredRecipe} />
           ) : (
             <div className="text-center p-6 bg-muted rounded-xl">
-              No recipes available
+              <p className="mb-2">No recipes available</p>
+              <Link to="/admin">
+                <Button size="sm">Add Recipes</Button>
+              </Link>
             </div>
           )}
         </section>
@@ -114,7 +124,16 @@ const Index = () => {
             </div>
           ) : (
             <div className="text-center p-6 bg-muted rounded-lg">
-              No recipes found matching your criteria
+              {recipes.length === 0 ? (
+                <>
+                  <p className="mb-2">Your database needs recipes!</p>
+                  <Link to="/admin">
+                    <Button size="sm">Populate Database</Button>
+                  </Link>
+                </>
+              ) : (
+                "No recipes found matching your criteria"
+              )}
             </div>
           )}
         </section>
