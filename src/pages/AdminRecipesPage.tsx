@@ -100,8 +100,8 @@ const AdminRecipesPage = () => {
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
   const [filtersVisible, setFiltersVisible] = useState(false);
   
@@ -322,8 +322,8 @@ const AdminRecipesPage = () => {
   };
 
   const resetFilters = () => {
-    setFilterCategory('');
-    setFilterDifficulty('');
+    setFilterCategory('all');
+    setFilterDifficulty('all');
     setSortBy('title-asc');
   };
 
@@ -364,11 +364,11 @@ const AdminRecipesPage = () => {
       );
     }
     
-    if (filterCategory) {
+    if (filterCategory && filterCategory !== 'all') {
       result = result.filter(recipe => recipe?.category === filterCategory);
     }
     
-    if (filterDifficulty) {
+    if (filterDifficulty && filterDifficulty !== 'all') {
       result = result.filter(recipe => recipe?.difficulty === filterDifficulty);
     }
     
@@ -417,7 +417,7 @@ const AdminRecipesPage = () => {
                       <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All categories</SelectItem>
+                      <SelectItem value="all">All categories</SelectItem>
                       {categories.map(category => (
                         <SelectItem key={category} value={category}>{category}</SelectItem>
                       ))}
@@ -432,7 +432,7 @@ const AdminRecipesPage = () => {
                       <SelectValue placeholder="All difficulties" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All difficulties</SelectItem>
+                      <SelectItem value="all">All difficulties</SelectItem>
                       <SelectItem value="Easy">Easy</SelectItem>
                       <SelectItem value="Medium">Medium</SelectItem>
                       <SelectItem value="Hard">Hard</SelectItem>
