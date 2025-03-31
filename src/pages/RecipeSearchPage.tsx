@@ -14,8 +14,8 @@ import type { RecipeStep } from '@/components/RecipeStepCard';
 import type { Ingredient } from '@/components/IngredientItem';
 import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
 import agentOrchestrator from '@/agents';
+import AIProviderInfo from '@/components/AIProviderInfo';
 
-// Extended type for recipe detail
 type RecipeDetail = Recipe & {
   description: string;
   servings: number;
@@ -38,7 +38,6 @@ const RecipeSearchPage = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [conversationId, setConversationId] = useState<string>('');
   
-  // Load recipes from database
   useEffect(() => {
     const loadRecipes = async () => {
       setIsLoading(true);
@@ -60,12 +59,10 @@ const RecipeSearchPage = () => {
     loadRecipes();
   }, [toast]);
 
-  // Handle search query
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
 
-  // Handle selecting an existing recipe
   const handleSelectRecipe = async (recipe: Recipe) => {
     setIsLoading(true);
     setSelectedRecipe(null);
@@ -74,16 +71,13 @@ const RecipeSearchPage = () => {
     setFoundOnline(false);
     
     try {
-      // Fetch complete recipe details
       const recipeDetail = await fetchRecipeById(recipe.id);
       if (recipeDetail) {
         setSelectedRecipe(recipeDetail);
         
-        // Fetch ingredients
         const ingredients = await fetchIngredientsByRecipeId(recipe.id);
         setRecipeIngredients(ingredients);
         
-        // Fetch steps
         const steps = await fetchRecipeSteps(recipe.id);
         setRecipeSteps(steps);
       }
@@ -99,7 +93,6 @@ const RecipeSearchPage = () => {
     }
   };
 
-  // Handle searching for recipe online
   const handleSearchExternal = async (query: string) => {
     setIsSearchingOnline(true);
     setSelectedRecipe(null);
@@ -112,24 +105,20 @@ const RecipeSearchPage = () => {
         description: 'Looking for recipe using AI...',
       });
       
-      // Use the agent orchestrator with the RecipeDiscoveryAgent
       const response = await agentOrchestrator.processRequest(
         query,
-        'RecipeDiscovery', // Specify the agent to use
+        'RecipeDiscovery',
         { conversationId }
       );
       
       if (response.success && response.data) {
         if (response.source === 'ai') {
-          // For AI-generated recipes
           setSelectedRecipe(response.data.recipe);
           setRecipeIngredients(response.data.ingredients);
           setRecipeSteps(response.data.steps);
           setFoundOnline(true);
         } else {
-          // For database recipes
           setSelectedRecipe(response.data);
-          // Fetch ingredients and steps for this recipe
           const ingredients = await fetchIngredientsByRecipeId(response.data.id);
           const steps = await fetchRecipeSteps(response.data.id);
           setRecipeIngredients(ingredients);
@@ -160,7 +149,6 @@ const RecipeSearchPage = () => {
     }
   };
 
-  // Save recipe found online to database
   const handleSaveRecipe = async () => {
     if (!selectedRecipe || !foundOnline) return;
     
@@ -177,11 +165,9 @@ const RecipeSearchPage = () => {
           description: 'Recipe has been added to your collection',
         });
         
-        // Refresh recipes list
         const recipesData = await fetchRecipes();
         setRecipes(recipesData);
         
-        // Mark as no longer found online (now it's in the database)
         setFoundOnline(false);
       } else {
         toast({
@@ -200,7 +186,6 @@ const RecipeSearchPage = () => {
     }
   };
 
-  // Copy recipe to clipboard
   const copyToClipboard = () => {
     if (!selectedRecipe) return;
     
@@ -216,7 +201,6 @@ const RecipeSearchPage = () => {
     });
     
     recipeText += "\n## Instructions\n";
-    // Sort steps by number before creating text
     const sortedSteps = [...recipeSteps].sort((a, b) => a.number - b.number);
     sortedSteps.forEach(step => {
       recipeText += `${step.number}. ${step.instruction}${step.isCritical ? ' (Critical Step)' : ''}\n`;
@@ -240,14 +224,12 @@ const RecipeSearchPage = () => {
       });
   };
 
-  // View full recipe details
   const viewRecipeDetails = () => {
     if (selectedRecipe) {
       navigate(`/recipe/${selectedRecipe.id}`);
     }
   };
 
-  // Initialize conversation ID
   useEffect(() => {
     if (!conversationId) {
       const newConversationId = agentOrchestrator.createNewConversation();
@@ -255,14 +237,12 @@ const RecipeSearchPage = () => {
     }
   }, [conversationId]);
 
-  // Add a placeholder data URL instead of using external URLs
   const getLocalPlaceholder = () => {
     return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
   };
 
   return (
     <div className="pb-20 min-h-screen">
-      {/* Header */}
       <header className="p-4 flex items-center justify-between border-b">
         <div className="flex items-center gap-2">
           <Button 
@@ -273,6 +253,7 @@ const RecipeSearchPage = () => {
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-xl font-bold">Recipe Search</h1>
+          <AIProviderInfo className="ml-2" />
         </div>
         <Button
           variant="outline"
@@ -283,7 +264,6 @@ const RecipeSearchPage = () => {
         </Button>
       </header>
 
-      {/* Main Content */}
       <main className="p-4 space-y-6">
         <div className="max-w-md mx-auto">
           <EnhancedSearchBar 
@@ -310,7 +290,6 @@ const RecipeSearchPage = () => {
           </div>
         </div>
 
-        {/* Selected Recipe Display */}
         {selectedRecipe && (
           <Card className="overflow-hidden bg-card border rounded-lg max-w-md mx-auto">
             <div className="relative h-48 bg-gray-300">
@@ -405,7 +384,6 @@ const RecipeSearchPage = () => {
           </Card>
         )}
         
-        {/* AI Chat Box if shown */}
         {showAIChat && (
           <div className="mb-6">
             <EnhancedAIChatBox 
@@ -418,7 +396,6 @@ const RecipeSearchPage = () => {
         )}
       </main>
 
-      {/* Mobile Nav Bar */}
       <MobileNavBar />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 type GeminiRequestContent = {
@@ -80,30 +79,6 @@ export const geminiService = {
      ]
    }
 
-2. **Ingredient Specification Requirements:**
-   - Be extremely precise with ingredients - list EVERY ingredient needed
-   - Provide exact measurements (e.g., "2 tablespoons" not just "some")
-   - Specify the preparation state when relevant (e.g., "minced garlic" not just "garlic")
-   - For Filipino recipes, include both English and Tagalog names when appropriate
-   - Mark ingredients as optional only when they truly are
-   - Always specify if common allergens are present
-
-3. **Cooking Steps Requirements:**
-   - Break down the cooking process into clear, logical steps
-   - Number steps sequentially
-   - Provide clear timing indicators where relevant
-   - Include temperature settings when applicable
-   - Highlight critical steps that affect the success of the recipe
-   - Use precise cooking terminology
-   - Include visual cues that indicate when a step is complete
-
-4. **Response Accuracy:**
-   - Focus on authentic Filipino recipe formulations
-   - Include regional variations when relevant
-   - Provide culturally accurate information
-   - Never omit key ingredients or steps to simplify the recipe
-   - Maintain proper technique and temperature guidance
-
 EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your response contains the complete JSON structure with all required fields populated with accurate, detailed information. Do NOT include any explanatory text before or after the JSON - provide ONLY the JSON object.`
       }
     ]
@@ -141,24 +116,7 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       return await this.attemptApiCall(requestBody);
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
-      
-      // Provide a fallback response with empty recipe structure
-      const fallbackResponse = {
-        recipe: {
-          title: "Recipe Unavailable",
-          description: "The recipe service is currently unavailable.",
-          category: "Unknown",
-          difficulty: "Medium", 
-          prepTime: "N/A",
-          cookTime: "N/A",
-          servings: 0,
-          instructions: "Recipe generation failed. Please try again later."
-        },
-        ingredients: [],
-        steps: []
-      };
-      
-      return JSON.stringify(fallbackResponse);
+      throw error; // Let the recipe search service handle the fallback
     }
   },
   
@@ -187,7 +145,7 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
         
         // Handle rate limit errors specifically
         if (errorData.error && errorData.error.code === 429) {
-          toast("Trying alternative AI model...", {
+          toast("Trying alternative Gemini model...", {
             description: "The recipe search service is switching to a different model"
           });
           
@@ -223,7 +181,7 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       return this.processApiResponse(data);
     } catch (error) {
       console.error("Error in Gemini API call:", error);
-      throw error;
+      throw error; // Let the recipe search service handle the fallback
     }
   },
   

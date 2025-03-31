@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Database, Loader2, Utensils, AlertCircle, BookOpen, FileUp } from 'lucide-react';
+import { ChevronLeft, Database, Loader2, Utensils, AlertCircle, BookOpen, FileUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Progress } from '@/components/ui/progress';
+import AIProviderSelector from '@/components/AIProviderSelector';
 
 const AdminPage = () => {
   const [isPopulating, setIsPopulating] = useState(false);
@@ -156,6 +158,11 @@ const AdminPage = () => {
         <ChevronLeft size={16} />
         <span>Back to home</span>
       </Link>
+      
+      {/* AI Provider Selector */}
+      <div className="mb-4">
+        <AIProviderSelector />
+      </div>
       
       <Card className="mb-4">
         <CardHeader>

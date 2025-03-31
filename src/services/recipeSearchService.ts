@@ -5,6 +5,8 @@ import { Recipe } from '@/components/RecipeCard';
 import { RecipeStep } from '@/components/RecipeStepCard';
 import { Ingredient } from '@/components/IngredientItem';
 import { geminiService } from './geminiService';
+import { openaiService } from './openaiService';
+import { aiProviderService } from './aiProviderService';
 import { toast } from 'sonner';
 
 /**
@@ -51,15 +53,55 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     // Generate a unique ID for the new recipe
     const recipeId = uuidv4();
     
-    // Create the prompt for Gemini AI - ensure we're asking for JSON
+    // Create the prompt for AI - ensure we're asking for JSON
     const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions. Only return the JSON object.`;
     
-    // Call Gemini AI to get recipe information
+    // Get the current AI provider
+    const currentProvider = aiProviderService.getCurrentProvider();
+    
+    // Call the appropriate AI service based on the provider
     toast(`Searching for "${recipeName}" recipe...`, {
-      description: "Connecting to AI service"
+      description: `Connecting to ${currentProvider.toUpperCase()} service`
     });
     
-    const aiResponse = await geminiService.generateContent(prompt);
+    let aiResponse: string;
+    
+    try {
+      if (currentProvider === 'gemini') {
+        aiResponse = await geminiService.generateContent(prompt);
+      } else {
+        aiResponse = await openaiService.generateContent(prompt);
+      }
+    } catch (primaryError) {
+      // Primary AI service failed, try the fallback
+      console.error(`Error with ${currentProvider} AI service:`, primaryError);
+      
+      toast.warning(`${currentProvider.toUpperCase()} service failed, trying fallback AI...`, {
+        duration: 3000
+      });
+      
+      try {
+        // Use the opposite service as fallback
+        const fallbackProvider = currentProvider === 'gemini' ? 'openai' : 'gemini';
+        
+        if (fallbackProvider === 'gemini') {
+          aiResponse = await geminiService.generateContent(prompt);
+        } else {
+          aiResponse = await openaiService.generateContent(prompt);
+        }
+        
+        toast.success(`Using ${fallbackProvider.toUpperCase()} as fallback`, {
+          duration: 3000
+        });
+      } catch (fallbackError) {
+        console.error('Error with fallback AI service:', fallbackError);
+        toast.error('All AI services failed', {
+          description: 'Please try again later'
+        });
+        return null;
+      }
+    }
+    
     console.log("AI Response:", aiResponse);
     
     // Check if the response starts with error message
