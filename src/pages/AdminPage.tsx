@@ -1,16 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Database, Loader2, Utensils, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { databasePopulationService } from '@/services/databasePopulationService';
+import { Progress } from '@/components/ui/progress';
 
 const AdminPage = () => {
   const [isPopulating, setIsPopulating] = useState(false);
   const [recipeCount, setRecipeCount] = useState(10); // Default to 10 recipes
   const { toast } = useToast();
+  const [populationProgress, setPopulationProgress] = useState(0);
+  const [populatedCount, setPopulatedCount] = useState(0);
+  const [populationStatus, setPopulationStatus] = useState('');
+
+  // Reset progress when not populating
+  useEffect(() => {
+    if (!isPopulating) {
+      setPopulationProgress(0);
+      setPopulatedCount(0);
+      setPopulationStatus('');
+    }
+  }, [isPopulating]);
 
   const handlePopulateDatabase = async () => {
     if (isPopulating) return;
@@ -23,9 +36,21 @@ const AdminPage = () => {
     if (!confirm) return;
     
     setIsPopulating(true);
+    setPopulationStatus('Initializing...');
     
     try {
-      await databasePopulationService.populateAllRecipes();
+      // Track progress through a callback
+      await databasePopulationService.populateAllRecipes((current, total, recipe) => {
+        const progress = Math.round((current / total) * 100);
+        setPopulationProgress(progress);
+        setPopulatedCount(current);
+        setPopulationStatus(`Populating ${recipe || 'recipes'}...`);
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Database population completed successfully!',
+      });
     } catch (error) {
       console.error('Database population error:', error);
       toast({
@@ -45,6 +70,7 @@ const AdminPage = () => {
     if (!recipeName) return;
     
     setIsPopulating(true);
+    setPopulationStatus(`Populating ${recipeName}...`);
     
     try {
       await databasePopulationService.populateSingleRecipe(recipeName);
@@ -78,23 +104,44 @@ const AdminPage = () => {
     if (!confirm) return;
     
     setIsPopulating(true);
+    setPopulationStatus('Initializing categories...');
     
     try {
       // First populate categories
       await databasePopulationService.populateCategories();
       
-      // Then populate the selected number of recipes
+      // Then populate the selected number of recipes with progress tracking
+      let populatedRecipes = 0;
       for (const recipe of recipesToPopulate) {
+        setPopulationStatus(`Populating ${recipe}...`);
+        setPopulationProgress(Math.round((populatedRecipes / recipesToPopulate.length) * 100));
+        setPopulatedCount(populatedRecipes);
+        
         toast({
           title: 'Processing',
           description: `Populating recipe: ${recipe}...`,
         });
-        await databasePopulationService.populateSingleRecipe(recipe);
+        
+        try {
+          await databasePopulationService.populateSingleRecipe(recipe);
+          populatedRecipes++;
+        } catch (error) {
+          console.error(`Error populating ${recipe}:`, error);
+          toast({
+            title: 'Warning',
+            description: `Skipped recipe "${recipe}" due to an error`,
+            variant: 'destructive'
+          });
+          // Continue with next recipe even if this one fails
+        }
       }
+      
+      setPopulationProgress(100);
+      setPopulatedCount(populatedRecipes);
       
       toast({
         title: 'Success',
-        description: `${recipeCount} recipes have been populated successfully!`,
+        description: `${populatedRecipes} out of ${recipeCount} recipes have been populated successfully!`,
       });
     } catch (error) {
       console.error('Multiple recipes population error:', error);
@@ -138,6 +185,16 @@ const AdminPage = () => {
             </div>
           </div>
           
+          {isPopulating && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{populationStatus}</span>
+                <span>{populatedCount} of {recipeCount}</span>
+              </div>
+              <Progress value={populationProgress} className="h-2" />
+            </div>
+          )}
+          
           <div className="space-y-2">
             <label htmlFor="recipeCount" className="text-sm font-medium">
               Number of recipes to populate:
@@ -150,6 +207,7 @@ const AdminPage = () => {
               value={recipeCount}
               onChange={(e) => setRecipeCount(parseInt(e.target.value))}
               className="w-full"
+              disabled={isPopulating}
             />
             <div className="text-sm text-center">
               {recipeCount} recipes

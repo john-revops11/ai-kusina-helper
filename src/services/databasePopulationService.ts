@@ -33,6 +33,9 @@ export type RecipeStepPopulationData = {
   isCritical?: boolean;
 };
 
+// Progress tracking callback type
+export type ProgressCallback = (current: number, total: number, currentRecipe?: string) => void;
+
 /**
  * A service for populating the Firebase database with recipe data
  */
@@ -108,6 +111,28 @@ export const databasePopulationService = {
   },
   
   /**
+   * Checks if a recipe already exists in the database
+   */
+  async recipeExists(recipeName: string): Promise<boolean> {
+    try {
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, 'recipes'));
+      
+      if (snapshot.exists()) {
+        const recipes = snapshot.val();
+        return Object.values(recipes).some((recipe: any) => 
+          recipe.title.toLowerCase() === recipeName.toLowerCase()
+        );
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`Error checking if recipe exists: ${recipeName}`, error);
+      return false;
+    }
+  },
+  
+  /**
    * Populates the categories table
    */
   async populateCategories(): Promise<void> {
@@ -150,23 +175,65 @@ export const databasePopulationService = {
       // Extract JSON object from the response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No valid JSON found in Gemini response');
+        // Fallback to creating default recipe data if Gemini fails
+        console.warn(`No valid JSON found in Gemini response for ${recipeName}, using fallback data`);
+        return this.createFallbackRecipeData(recipeName);
       }
       
-      const recipeData = JSON.parse(jsonMatch[0]) as RecipePopulationData;
-      recipeData.id = this.generateId();
-      
-      // Ensure the image URL is valid by replacing spaces and using a default pattern
-      if (!recipeData.imageUrl || recipeData.imageUrl.includes('INSERT_IMAGE_URL')) {
-        recipeData.imageUrl = `https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')}`;
+      try {
+        const recipeData = JSON.parse(jsonMatch[0]) as RecipePopulationData;
+        recipeData.id = this.generateId();
+        
+        // Ensure the image URL is valid by replacing spaces and using a default pattern
+        if (!recipeData.imageUrl || recipeData.imageUrl.includes('INSERT_IMAGE_URL')) {
+          recipeData.imageUrl = `https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')}`;
+        }
+        
+        return recipeData;
+      } catch (parseError) {
+        console.error(`Error parsing JSON for ${recipeName}:`, parseError);
+        return this.createFallbackRecipeData(recipeName);
       }
-      
-      return recipeData;
     } catch (error) {
       console.error(`Error getting recipe data for ${recipeName}:`, error);
       toast.error(`Failed to get recipe data for ${recipeName}`);
-      throw error;
+      return this.createFallbackRecipeData(recipeName);
     }
+  },
+  
+  /**
+   * Creates fallback recipe data when Gemini API fails
+   */
+  createFallbackRecipeData(recipeName: string): RecipePopulationData {
+    let category = 'Main Dish';
+    
+    // Determine category based on recipe name
+    if (['Tapsilog', 'Longsilog', 'Tocilog', 'Champorado', 'Pandesal'].some(item => 
+      recipeName.toLowerCase().includes(item.toLowerCase())
+    )) {
+      category = 'Breakfast';
+    } else if (['Halo-Halo', 'Leche Flan', 'Biko', 'Turon', 'Suman', 'Ube', 'Puto', 'Bibingka'].some(item => 
+      recipeName.toLowerCase().includes(item.toLowerCase())
+    )) {
+      category = 'Dessert';
+    } else if (['Ukoy', 'Banana Cue', 'Maruya', 'Lumpia'].some(item => 
+      recipeName.toLowerCase().includes(item.toLowerCase())
+    )) {
+      category = 'Snack/Merienda';
+    }
+    
+    return {
+      id: this.generateId(),
+      title: recipeName,
+      description: `Traditional Filipino dish known as ${recipeName}. This is a fallback description as AI generation failed.`,
+      category,
+      prepTime: '30 mins',
+      cookTime: '1 hour',
+      difficulty: 'Medium',
+      servings: 4,
+      imageUrl: `https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')}`,
+      instructions: 'Detailed instructions could not be generated. Please search for a recipe online.',
+    };
   },
   
   /**
@@ -196,21 +263,71 @@ export const databasePopulationService = {
       // Extract JSON array from the response
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        throw new Error('No valid JSON found in Gemini response');
+        console.warn(`No valid JSON found in Gemini response for ${recipeName} ingredients, using fallback data`);
+        return this.createFallbackIngredientsData(recipeName);
       }
       
-      const ingredientsData = JSON.parse(jsonMatch[0]) as Omit<IngredientPopulationData, 'id'>[];
-      
-      // Add IDs to each ingredient
-      return ingredientsData.map(ingredient => ({
-        ...ingredient,
-        id: this.generateId()
-      }));
+      try {
+        const ingredientsData = JSON.parse(jsonMatch[0]) as Omit<IngredientPopulationData, 'id'>[];
+        
+        // Add IDs to each ingredient
+        return ingredientsData.map(ingredient => ({
+          ...ingredient,
+          id: this.generateId()
+        }));
+      } catch (parseError) {
+        console.error(`Error parsing ingredient JSON for ${recipeName}:`, parseError);
+        return this.createFallbackIngredientsData(recipeName);
+      }
     } catch (error) {
       console.error(`Error getting ingredients data for ${recipeName}:`, error);
       toast.error(`Failed to get ingredients data for ${recipeName}`);
-      throw error;
+      return this.createFallbackIngredientsData(recipeName);
     }
+  },
+  
+  /**
+   * Creates fallback ingredients data when Gemini API fails
+   */
+  createFallbackIngredientsData(recipeName: string): IngredientPopulationData[] {
+    // Generic ingredients that could apply to most Filipino dishes
+    return [
+      {
+        id: this.generateId(),
+        name: 'Garlic',
+        quantity: '3',
+        unit: 'cloves',
+        hasSubstitutions: true
+      },
+      {
+        id: this.generateId(),
+        name: 'Onion',
+        quantity: '1',
+        unit: 'medium',
+        hasSubstitutions: true
+      },
+      {
+        id: this.generateId(),
+        name: 'Rice',
+        quantity: '2',
+        unit: 'cups',
+        hasSubstitutions: false
+      },
+      {
+        id: this.generateId(),
+        name: 'Soy sauce',
+        quantity: '1/4',
+        unit: 'cup',
+        hasSubstitutions: true
+      },
+      {
+        id: this.generateId(),
+        name: 'Salt',
+        quantity: '1',
+        unit: 'teaspoon',
+        hasSubstitutions: false
+      }
+    ];
   },
   
   /**
@@ -240,21 +357,63 @@ export const databasePopulationService = {
       // Extract JSON array from the response
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        throw new Error('No valid JSON found in Gemini response');
+        console.warn(`No valid JSON found in Gemini response for ${recipeName} steps, using fallback data`);
+        return this.createFallbackStepsData(recipeName);
       }
       
-      const stepsData = JSON.parse(jsonMatch[0]) as Omit<RecipeStepPopulationData, 'id'>[];
-      
-      // Add IDs to each step
-      return stepsData.map(step => ({
-        ...step,
-        id: this.generateId()
-      }));
+      try {
+        const stepsData = JSON.parse(jsonMatch[0]) as Omit<RecipeStepPopulationData, 'id'>[];
+        
+        // Add IDs to each step
+        return stepsData.map(step => ({
+          ...step,
+          id: this.generateId()
+        }));
+      } catch (parseError) {
+        console.error(`Error parsing steps JSON for ${recipeName}:`, parseError);
+        return this.createFallbackStepsData(recipeName);
+      }
     } catch (error) {
       console.error(`Error getting recipe steps for ${recipeName}:`, error);
       toast.error(`Failed to get recipe steps for ${recipeName}`);
-      throw error;
+      return this.createFallbackStepsData(recipeName);
     }
+  },
+  
+  /**
+   * Creates fallback steps data when Gemini API fails
+   */
+  createFallbackStepsData(recipeName: string): RecipeStepPopulationData[] {
+    return [
+      {
+        id: this.generateId(),
+        number: 1,
+        instruction: "Prepare all ingredients for the dish.",
+        timeInMinutes: 10,
+        isCritical: true
+      },
+      {
+        id: this.generateId(),
+        number: 2,
+        instruction: "Follow a traditional recipe for preparation steps.",
+        timeInMinutes: 15,
+        isCritical: true
+      },
+      {
+        id: this.generateId(),
+        number: 3,
+        instruction: "Cook according to traditional methods.",
+        timeInMinutes: 30,
+        isCritical: true
+      },
+      {
+        id: this.generateId(),
+        number: 4,
+        instruction: "Serve hot and enjoy.",
+        timeInMinutes: 5,
+        isCritical: false
+      }
+    ];
   },
   
   /**
@@ -275,14 +434,19 @@ export const databasePopulationService = {
       // Extract JSON array from the response
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        throw new Error('No valid JSON found in Gemini response');
+        console.warn(`No valid JSON found in Gemini response for ${ingredientName} substitutions, using fallback data`);
+        return [`Alternative for ${ingredientName}`, `Another option instead of ${ingredientName}`];
       }
       
-      return JSON.parse(jsonMatch[0]) as string[];
+      try {
+        return JSON.parse(jsonMatch[0]) as string[];
+      } catch (parseError) {
+        console.error(`Error parsing substitutions JSON for ${ingredientName}:`, parseError);
+        return [`Alternative for ${ingredientName}`, `Another option instead of ${ingredientName}`];
+      }
     } catch (error) {
       console.error(`Error getting substitutions for ${ingredientName}:`, error);
-      toast.error(`Failed to get substitutions for ${ingredientName}`);
-      return [];
+      return [`Alternative for ${ingredientName}`, `Another option instead of ${ingredientName}`];
     }
   },
   
@@ -291,6 +455,14 @@ export const databasePopulationService = {
    */
   async populateSingleRecipe(recipeName: string): Promise<void> {
     try {
+      // Check if recipe already exists
+      const exists = await this.recipeExists(recipeName);
+      if (exists) {
+        console.log(`Recipe ${recipeName} already exists in database, skipping`);
+        toast.info(`Recipe "${recipeName}" already exists in database`);
+        return;
+      }
+      
       // 1. Get recipe data
       const recipeData = await this.getRecipeDataFromGemini(recipeName);
       
@@ -325,13 +497,14 @@ export const databasePopulationService = {
     } catch (error) {
       console.error(`Error populating recipe ${recipeName}:`, error);
       toast.error(`Failed to populate recipe "${recipeName}"`);
+      throw error;
     }
   },
   
   /**
    * Populates all recipes in the database
    */
-  async populateAllRecipes(): Promise<void> {
+  async populateAllRecipes(progressCallback?: ProgressCallback): Promise<void> {
     toast('Starting database population, this might take some time...', {
       duration: 5000
     });
@@ -341,17 +514,40 @@ export const databasePopulationService = {
       await this.populateCategories();
       
       // 2. Populate recipes one by one
-      for (const recipe of this.philippineRecipes) {
+      let successCount = 0;
+      for (let i = 0; i < this.philippineRecipes.length; i++) {
+        const recipe = this.philippineRecipes[i];
+        
+        // Update progress
+        if (progressCallback) {
+          progressCallback(i, this.philippineRecipes.length, recipe);
+        }
+        
         toast(`Populating recipe: ${recipe}...`);
-        await this.populateSingleRecipe(recipe);
+        try {
+          await this.populateSingleRecipe(recipe);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to populate recipe ${recipe}:`, error);
+          // Continue with next recipe even if this one fails
+        }
+        
+        // Small delay to prevent overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      toast.success('Database population completed successfully!', {
+      // Final progress update
+      if (progressCallback) {
+        progressCallback(this.philippineRecipes.length, this.philippineRecipes.length);
+      }
+      
+      toast.success(`Database population completed successfully! ${successCount} recipes added.`, {
         duration: 5000
       });
     } catch (error) {
       console.error('Error during database population:', error);
       toast.error('Database population failed. See console for details.');
+      throw error;
     }
   }
 };
