@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -55,18 +54,10 @@ const RecipeDetail = () => {
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
   
-  // Change from useState to useRef for the timer
   const timerRef = useRef<number | null>(null);
 
-  const getFallbackImage = () => {
-    const fallbackImages = [
-      "https://images.unsplash.com/photo-1556040220-4096d522378d?q=80&w=1887&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070",
-      "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=2070",
-      "https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=2072"
-    ];
-    
-    return fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+  const getLocalPlaceholder = () => {
+    return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
   };
 
   useEffect(() => {
@@ -132,13 +123,11 @@ const RecipeDetail = () => {
 
   useEffect(() => {
     if (timerRunning && remainingTime > 0) {
-      // Store the timer ID in the ref
       timerRef.current = window.setTimeout(() => {
         setRemainingTime(prev => prev - 1);
       }, 1000);
 
       return () => {
-        // Clean up using the ref
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
@@ -255,17 +244,7 @@ const RecipeDetail = () => {
 
   return (
     <div className="pb-20 min-h-screen">
-      <div className="relative h-60">
-        <img 
-          src={recipe?.imageUrl} 
-          alt={recipe?.title} 
-          className="w-full h-full object-cover brightness-50"
-          loading="eager"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = getFallbackImage();
-          }}
-        />
+      <div className="relative h-60 bg-gray-300">
         <Link 
           to="/" 
           className="absolute top-4 left-4 bg-black/30 p-2 rounded-full"
@@ -429,4 +408,3 @@ const RecipeDetail = () => {
 };
 
 export default RecipeDetail;
-

@@ -27,8 +27,8 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
   return (
     <Link to={`/recipe/${recipe.id}`} className="recipe-card block transform hover:-translate-y-1 transition-all duration-300">
       <div className="relative overflow-hidden rounded-t-lg">
-        <div className="overflow-hidden bg-gray-200" style={{ height: '12rem' }}>
-          {/* Image removed */}
+        <div className="overflow-hidden bg-gray-300" style={{ height: '12rem' }}>
+          {/* Placeholder div instead of image */}
         </div>
         <Badge className={`absolute top-2 right-2 ${difficultyColor[recipe.difficulty]}`}>
           {recipe.difficulty}

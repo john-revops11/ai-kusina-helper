@@ -394,6 +394,10 @@ const AdminRecipesPage = () => {
     }
   };
 
+  const getLocalFallbackImage = () => {
+    return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
+  };
+
   const filteredAndSortedRecipes = (() => {
     let result = [...recipes];
     
@@ -556,21 +560,13 @@ const AdminRecipesPage = () => {
                         >
                           <TableCell className="font-medium flex items-center gap-3">
                             <div 
-                              className="w-10 h-10 rounded-md overflow-hidden shrink-0 hover:ring-2 hover:ring-kusina-orange/50 transition-all cursor-pointer"
+                              className="w-10 h-10 rounded-md overflow-hidden shrink-0 hover:ring-2 hover:ring-kusina-orange/50 transition-all cursor-pointer bg-gray-300"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openImageDialog(recipe);
                               }}
                             >
-                              <img 
-                                src={recipe.imageUrl} 
-                                alt={recipe.title} 
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
-                                }}
-                              />
+                              {/* Replace image with placeholder div */}
                             </div>
                             <span 
                               className="text-kusina-brown"
@@ -742,21 +738,8 @@ const AdminRecipesPage = () => {
             </div>
             
             {imagePreview && (
-              <div className="relative aspect-video rounded-md overflow-hidden border border-kusina-orange/20">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
-                    toast({
-                      title: "Image Error",
-                      description: "This image URL is invalid. Please try another.",
-                      variant: "destructive"
-                    });
-                  }}
-                />
+              <div className="relative aspect-video rounded-md overflow-hidden border border-kusina-orange/20 bg-gray-300">
+                {/* Remove the actual image component to prevent flickering */}
               </div>
             )}
           </div>

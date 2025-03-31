@@ -255,6 +255,11 @@ const RecipeSearchPage = () => {
     }
   }, [conversationId]);
 
+  // Add a placeholder data URL instead of using external URLs
+  const getLocalPlaceholder = () => {
+    return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
+  };
+
   return (
     <div className="pb-20 min-h-screen">
       {/* Header */}
@@ -308,17 +313,7 @@ const RecipeSearchPage = () => {
         {/* Selected Recipe Display */}
         {selectedRecipe && (
           <Card className="overflow-hidden bg-card border rounded-lg max-w-md mx-auto">
-            <div className="relative h-48">
-              <img 
-                src={selectedRecipe.imageUrl} 
-                alt={selectedRecipe.title} 
-                className="w-full h-full object-cover"
-                loading="eager"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
-                }}
-              />
+            <div className="relative h-48 bg-gray-300">
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
               <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                 <Badge className="mb-2">{selectedRecipe.category}</Badge>

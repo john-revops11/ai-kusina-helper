@@ -14,7 +14,7 @@ const FeaturedRecipe: React.FC<FeaturedRecipeProps> = ({ recipe }) => {
   return (
     <div className="relative w-full rounded-xl overflow-hidden shadow-lg border border-kusina-orange/20 hover:shadow-xl transition-all duration-300">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-kusina-brown/30 to-kusina-brown/80" style={{ height: '250px' }}>
-        {/* Image removed */}
+        {/* Placeholder div instead of image */}
         <div className="w-full h-full bg-gray-300"></div>
       </div>
       <div className="relative z-10 p-6 flex flex-col h-full justify-end min-h-[250px]">
