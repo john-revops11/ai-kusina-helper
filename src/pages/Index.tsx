@@ -78,7 +78,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="px-4 space-y-6">
         {/* Search Bar */}
-        <SearchBar onSearch={handleSearch} />
+        <SearchBar onSearch={handleSearch} redirectToSearch={true} />
 
         {/* Featured Recipe */}
         <section>
@@ -90,8 +90,8 @@ const Index = () => {
           ) : (
             <div className="text-center p-6 bg-muted rounded-xl">
               <p className="mb-2">No recipes available</p>
-              <Link to="/admin">
-                <Button size="sm">Add Recipes</Button>
+              <Link to="/search">
+                <Button size="sm">Search for Recipes</Button>
               </Link>
             </div>
           )}
@@ -126,9 +126,9 @@ const Index = () => {
             <div className="text-center p-6 bg-muted rounded-lg">
               {recipes.length === 0 ? (
                 <>
-                  <p className="mb-2">Your database needs recipes!</p>
-                  <Link to="/admin">
-                    <Button size="sm">Populate Database</Button>
+                  <p className="mb-2">Try searching for recipes!</p>
+                  <Link to="/search">
+                    <Button size="sm">Search Recipes</Button>
                   </Link>
                 </>
               ) : (

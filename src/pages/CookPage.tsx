@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, Filter, CookingPot } from 'lucide-react';
+import { ChefHat, Filter, CookingPot, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import MobileNavBar from '@/components/MobileNavBar';
@@ -29,9 +29,16 @@ const CookPage = () => {
           <CookingPot className="text-primary" size={24} />
           <h1 className="text-xl font-bold">Let's Cook</h1>
         </div>
-        <Button variant="outline" size="icon">
-          <Filter size={18} />
-        </Button>
+        <div className="flex gap-2">
+          <Link to="/search">
+            <Button variant="ghost" size="icon" className="hover:bg-primary/10">
+              <Search size={18} />
+            </Button>
+          </Link>
+          <Button variant="outline" size="icon">
+            <Filter size={18} />
+          </Button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -53,15 +60,17 @@ const CookPage = () => {
               </CardContent>
             </Card>
             
-            <Card className="bg-kusina-green/10 border-kusina-green/30">
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-kusina-green/20 flex items-center justify-center mb-2">
-                  <CookingPot size={24} className="text-kusina-green" />
-                </div>
-                <h3 className="font-medium mb-1">Favorites</h3>
-                <p className="text-xs text-muted-foreground">Your saved recipes</p>
-              </CardContent>
-            </Card>
+            <Link to="/search" className="block w-full">
+              <Card className="bg-kusina-green/10 border-kusina-green/30 h-full transition-transform hover:scale-[1.02]">
+                <CardContent className="p-4 flex flex-col items-center text-center h-full">
+                  <div className="h-12 w-12 rounded-full bg-kusina-green/20 flex items-center justify-center mb-2">
+                    <Search size={24} className="text-kusina-green" />
+                  </div>
+                  <h3 className="font-medium mb-1">Find Recipes</h3>
+                  <p className="text-xs text-muted-foreground">Search any recipe</p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </section>
 

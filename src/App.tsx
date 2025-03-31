@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import Index from "./pages/Index";
 import ExplorePage from "./pages/ExplorePage";
 import RecipeDetail from "./pages/RecipeDetail";
+import RecipeSearchPage from "./pages/RecipeSearchPage";
 import CookPage from "./pages/CookPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
@@ -25,6 +26,7 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/recipe/:id" element={<RecipeDetail />} />
+        <Route path="/search" element={<RecipeSearchPage />} />
         <Route path="/cook/:id" element={<CookPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
