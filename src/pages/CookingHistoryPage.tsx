@@ -15,25 +15,25 @@ const cookingHistory = [
     id: '1',
     recipeName: 'Adobo',
     date: '2023-09-15',
-    imageUrl: 'https://images.unsplash.com/photo-1623595119708-26b1f7500266?q=80&w=2070',
+    imageUrl: 'https://images.unsplash.com/photo-1625640207684-cacc9be30530?q=80&w=2070',
   },
   {
     id: '2',
     recipeName: 'Sinigang',
     date: '2023-09-10',
-    imageUrl: 'https://images.unsplash.com/photo-1651590714854-a2a170843893?q=80&w=2079',
+    imageUrl: 'https://images.unsplash.com/photo-1576749872435-ff88a93b2412?q=80&w=2070',
   },
   {
     id: '3',
     recipeName: 'Pancit Canton',
     date: '2023-09-05',
-    imageUrl: 'https://images.unsplash.com/photo-1653353215172-c9e15893a95d?q=80&w=2070',
+    imageUrl: 'https://images.unsplash.com/photo-1570275239925-4af0aa93a0dc?q=80&w=2070',
   },
   {
     id: '4',
     recipeName: 'Halo-Halo',
     date: '2023-08-30',
-    imageUrl: 'https://images.unsplash.com/photo-1554651202-3bd44cd5fe1c?q=80&w=2081',
+    imageUrl: 'https://images.unsplash.com/photo-1628478955934-a8631511924e?q=80&w=2070',
   },
 ];
 
@@ -61,6 +61,10 @@ const CookingHistoryPage = () => {
                     src={item.imageUrl} 
                     alt={item.recipeName} 
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image of Filipino food
+                    }}
                   />
                 </div>
                 <div className="p-4 flex-1 flex flex-col justify-between">

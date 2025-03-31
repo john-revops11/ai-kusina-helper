@@ -31,6 +31,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
           src={recipe.imageUrl} 
           alt={recipe.title} 
           className="w-full h-48 object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
+          }}
         />
         <Badge className={`absolute top-2 right-2 ${difficultyColor[recipe.difficulty]}`}>
           {recipe.difficulty}

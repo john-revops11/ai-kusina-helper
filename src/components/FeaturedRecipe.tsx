@@ -18,6 +18,10 @@ const FeaturedRecipe: React.FC<FeaturedRecipeProps> = ({ recipe }) => {
           src={recipe.imageUrl} 
           alt={recipe.title}
           className="w-full h-full object-cover brightness-50"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image of Filipino food
+          }}
         />
       </div>
       <div className="relative z-10 p-6 flex flex-col h-full justify-end min-h-[250px]">
