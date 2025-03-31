@@ -10,7 +10,10 @@ import {
   Image,
   Check,
   X,
-  Trash2
+  Trash2,
+  Filter,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,18 +51,36 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { 
   fetchRecipes, 
   fetchIngredientsByRecipeId,
   fetchRecipeSteps,
   updateRecipeImage,
-  deleteRecipe
+  deleteRecipe,
+  fetchCategories
 } from '@/services/recipeService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
 import { Ingredient } from '@/components/IngredientItem';
 import { RecipeStep } from '@/components/RecipeStepCard';
+
+type SortOption = 'title-asc' | 'title-desc' | 'category-asc' | 'category-desc' | 'difficulty-asc' | 'difficulty-desc';
 
 const AdminRecipesPage = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -77,12 +98,28 @@ const AdminRecipesPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('');
+  const [sortBy, setSortBy] = useState<SortOption>('title-asc');
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  
   const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadRecipes();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      const categoriesData = await fetchCategories();
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    }
+  };
 
   const loadRecipes = async () => {
     setIsLoading(true);
@@ -279,9 +316,54 @@ const AdminRecipesPage = () => {
     }
   };
 
-  const filteredRecipes = recipes.filter(recipe => 
-    recipe?.title ? recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) : false
-  );
+  const toggleFilters = () => {
+    setFiltersVisible(!filtersVisible);
+  };
+
+  const resetFilters = () => {
+    setFilterCategory('');
+    setFilterDifficulty('');
+    setSortBy('title-asc');
+  };
+
+  const applySort = (recipes: Recipe[]): Recipe[] => {
+    const [field, direction] = sortBy.split('-');
+    
+    return [...recipes].sort((a, b) => {
+      let comparison = 0;
+      
+      if (field === 'title') {
+        comparison = a.title.localeCompare(b.title);
+      } else if (field === 'category') {
+        comparison = a.category.localeCompare(b.category);
+      } else if (field === 'difficulty') {
+        const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+        comparison = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
+      }
+      
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  const filteredAndSortedRecipes = (() => {
+    let result = [...recipes];
+    
+    if (searchTerm) {
+      result = result.filter(recipe => 
+        recipe?.title ? recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) : false
+      );
+    }
+    
+    if (filterCategory) {
+      result = result.filter(recipe => recipe.category === filterCategory);
+    }
+    
+    if (filterDifficulty) {
+      result = result.filter(recipe => recipe.difficulty === filterDifficulty);
+    }
+    
+    return applySort(result);
+  })();
 
   return (
     <div className="container mx-auto p-4 max-w-6xl pb-20 bg-gradient-to-br from-amber-50 to-orange-50">
@@ -296,15 +378,86 @@ const AdminRecipesPage = () => {
         </CardHeader>
         
         <CardContent>
-          <div className="flex items-center gap-2 mb-6">
-            <Search className="text-kusina-orange" size={18} />
-            <Input 
-              type="text" 
-              placeholder="Search recipes..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 border-kusina-orange/20 focus-visible:ring-kusina-orange/30"
-            />
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Search className="text-kusina-orange" size={18} />
+              <Input 
+                type="text" 
+                placeholder="Search recipes..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 border-kusina-orange/20 focus-visible:ring-kusina-orange/30"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleFilters}
+                className="border-kusina-orange/20 text-kusina-orange hover:bg-kusina-orange/10"
+              >
+                <Filter size={18} />
+              </Button>
+            </div>
+            
+            {filtersVisible && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-kusina-cream/20 rounded-md border border-kusina-orange/20 animate-in fade-in-50 duration-300">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-kusina-brown">Category</label>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="border-kusina-orange/20">
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All categories</SelectItem>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-kusina-brown">Difficulty</label>
+                  <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+                    <SelectTrigger className="border-kusina-orange/20">
+                      <SelectValue placeholder="All difficulties" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All difficulties</SelectItem>
+                      <SelectItem value="Easy">Easy</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-kusina-brown">Sort by</label>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                    <SelectTrigger className="border-kusina-orange/20">
+                      <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="title-asc">Name (A-Z)</SelectItem>
+                      <SelectItem value="title-desc">Name (Z-A)</SelectItem>
+                      <SelectItem value="category-asc">Category (A-Z)</SelectItem>
+                      <SelectItem value="category-desc">Category (Z-A)</SelectItem>
+                      <SelectItem value="difficulty-asc">Difficulty (Easy-Hard)</SelectItem>
+                      <SelectItem value="difficulty-desc">Difficulty (Hard-Easy)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="col-span-1 md:col-span-3 flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={resetFilters}
+                    className="border-kusina-orange/20 text-kusina-orange hover:bg-kusina-orange/10"
+                  >
+                    Reset Filters
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           
           {isLoading ? (
@@ -323,14 +476,14 @@ const AdminRecipesPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecipes.length === 0 ? (
+                  {filteredAndSortedRecipes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         No recipes found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredRecipes.map(recipe => (
+                    filteredAndSortedRecipes.map(recipe => (
                       <React.Fragment key={recipe.id}>
                         <TableRow 
                           className="cursor-pointer hover:bg-kusina-cream/20"
