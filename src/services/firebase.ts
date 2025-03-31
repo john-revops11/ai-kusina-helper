@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDDcvFG8V79Bwd2k-E9AH55kBZHYx9-Bnw",
+  apiKey: "AIzaSyCG_5QQ36fYUX2X4hOgecQnH2ZBKr9ae-c",
   authDomain: "kusina-d3f76.firebaseapp.com",
   databaseURL: "https://kusina-d3f76-default-rtdb.firebaseio.com",
   projectId: "kusina-d3f76",
