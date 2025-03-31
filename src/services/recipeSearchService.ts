@@ -1,10 +1,10 @@
-
 import { database, ref, set } from './firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { Recipe } from '@/components/RecipeCard';
 import { RecipeStep } from '@/components/RecipeStepCard';
 import { Ingredient } from '@/components/IngredientItem';
 import { geminiService } from './geminiService';
+import { toast } from 'sonner';
 
 // Use AI to search for recipes online
 export const searchRecipeOnline = async (recipeName: string): Promise<{
@@ -22,38 +22,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     const recipeId = uuidv4();
     
     // Create the prompt for Gemini AI
-    const prompt = `I need a Filipino recipe for "${recipeName}". Please provide the following information in JSON format:
-    {
-      "recipe": {
-        "title": "Recipe Title",
-        "description": "Brief description of the dish",
-        "category": "Category (Main Course, Dessert, etc.)",
-        "difficulty": "Easy, Medium, or Hard",
-        "prepTime": "Preparation time in minutes",
-        "cookTime": "Cooking time in minutes",
-        "servings": number of servings,
-        "instructions": "Brief summary of instructions"
-      },
-      "ingredients": [
-        {
-          "name": "Ingredient name",
-          "quantity": "Amount",
-          "unit": "Unit of measurement",
-          "isOptional": boolean,
-          "hasSubstitutions": boolean
-        }
-      ],
-      "steps": [
-        {
-          "number": step number,
-          "instruction": "Detailed instruction",
-          "timeInMinutes": time in minutes,
-          "isCritical": boolean
-        }
-      ]
-    }
-    
-    Make sure to provide accurate information for a Filipino recipe, with realistic ingredients and steps. Include at least 5 ingredients and 5 steps.`;
+    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions.`;
     
     // Call Gemini AI to get recipe information
     const aiResponse = await geminiService.generateContent(prompt);
@@ -64,55 +33,84 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     
     if (!jsonMatch) {
       console.error("Could not extract JSON from AI response");
+      toast({
+        title: "Error",
+        description: "The AI response format was invalid. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     
     let jsonStr = jsonMatch[0];
     
-    // Parse the JSON response
-    const recipeData = JSON.parse(jsonStr);
-    
-    // Format the response to match our expected structure
-    const recipe = {
-      id: recipeId,
-      title: recipeData.recipe.title,
-      imageUrl: `https://source.unsplash.com/800x600/?filipino,${recipeName.replace(/\s/g, ',')}`,
-      prepTime: recipeData.recipe.prepTime,
-      category: recipeData.recipe.category,
-      difficulty: recipeData.recipe.difficulty,
-      description: recipeData.recipe.description,
-      servings: recipeData.recipe.servings,
-      cookTime: recipeData.recipe.cookTime,
-      instructions: recipeData.recipe.instructions
-    };
-    
-    // Format ingredients
-    const ingredients = recipeData.ingredients.map((ing: any) => ({
-      id: `ing-${uuidv4()}`,
-      name: ing.name,
-      quantity: ing.quantity.toString(),
-      unit: ing.unit,
-      recipeId: recipeId,
-      isOptional: ing.isOptional || false,
-      hasSubstitutions: ing.hasSubstitutions || false
-    }));
-    
-    // Format steps
-    const steps = recipeData.steps.map((step: any) => ({
-      id: `step-${uuidv4()}`,
-      number: step.number,
-      instruction: step.instruction,
-      timeInMinutes: step.timeInMinutes,
-      isCritical: step.isCritical || false
-    }));
-    
-    return {
-      recipe,
-      ingredients,
-      steps
-    };
+    try {
+      // Parse the JSON response
+      const recipeData = JSON.parse(jsonStr);
+      
+      // Validate the structure of the response
+      if (!recipeData.recipe || !recipeData.ingredients || !recipeData.steps) {
+        throw new Error("Incomplete recipe data structure");
+      }
+      
+      if (recipeData.ingredients.length === 0 || recipeData.steps.length === 0) {
+        throw new Error("Missing ingredients or steps");
+      }
+      
+      // Format the response to match our expected structure
+      const recipe = {
+        id: recipeId,
+        title: recipeData.recipe.title,
+        imageUrl: `https://source.unsplash.com/800x600/?filipino,${recipeName.replace(/\s/g, ',')}`,
+        prepTime: recipeData.recipe.prepTime,
+        category: recipeData.recipe.category,
+        difficulty: recipeData.recipe.difficulty,
+        description: recipeData.recipe.description,
+        servings: recipeData.recipe.servings,
+        cookTime: recipeData.recipe.cookTime,
+        instructions: recipeData.recipe.instructions
+      };
+      
+      // Format ingredients
+      const ingredients = recipeData.ingredients.map((ing: any) => ({
+        id: `ing-${uuidv4()}`,
+        name: ing.name,
+        quantity: ing.quantity.toString(),
+        unit: ing.unit,
+        recipeId: recipeId,
+        isOptional: ing.isOptional || false,
+        hasSubstitutions: ing.hasSubstitutions || false
+      }));
+      
+      // Format steps
+      const steps = recipeData.steps.map((step: any) => ({
+        id: `step-${uuidv4()}`,
+        number: step.number,
+        instruction: step.instruction,
+        timeInMinutes: step.timeInMinutes,
+        isCritical: step.isCritical || false
+      }));
+      
+      return {
+        recipe,
+        ingredients,
+        steps
+      };
+    } catch (error) {
+      console.error('Error parsing recipe data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to parse recipe data. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
   } catch (error) {
     console.error('Error searching recipe online:', error);
+    toast({
+      title: "Error",
+      description: "Failed to search for recipe online. Please try again.",
+      variant: "destructive"
+    });
     return null;
   }
 };
