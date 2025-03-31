@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -333,12 +334,21 @@ const AdminRecipesPage = () => {
       let comparison = 0;
       
       if (field === 'title') {
-        comparison = a.title.localeCompare(b.title);
+        // Add null checks for title
+        const titleA = a.title || '';
+        const titleB = b.title || '';
+        comparison = titleA.localeCompare(titleB);
       } else if (field === 'category') {
-        comparison = a.category.localeCompare(b.category);
+        // Add null checks for category
+        const categoryA = a.category || '';
+        const categoryB = b.category || '';
+        comparison = categoryA.localeCompare(categoryB);
       } else if (field === 'difficulty') {
         const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-        comparison = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
+        // Add null checks and fallbacks for difficulty
+        const diffA = a.difficulty ? difficultyOrder[a.difficulty] || 0 : 0;
+        const diffB = b.difficulty ? difficultyOrder[b.difficulty] || 0 : 0;
+        comparison = diffA - diffB;
       }
       
       return direction === 'asc' ? comparison : -comparison;
@@ -355,11 +365,11 @@ const AdminRecipesPage = () => {
     }
     
     if (filterCategory) {
-      result = result.filter(recipe => recipe.category === filterCategory);
+      result = result.filter(recipe => recipe?.category === filterCategory);
     }
     
     if (filterDifficulty) {
-      result = result.filter(recipe => recipe.difficulty === filterDifficulty);
+      result = result.filter(recipe => recipe?.difficulty === filterDifficulty);
     }
     
     return applySort(result);
