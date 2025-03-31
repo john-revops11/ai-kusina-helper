@@ -28,6 +28,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Accordion,
   AccordionContent,
@@ -109,6 +110,11 @@ const AdminRecipesPage = () => {
   const [isRemovingDuplicates, setIsRemovingDuplicates] = useState(false);
   const [duplicateRemovalDialogOpen, setDuplicateRemovalDialogOpen] = useState(false);
   const [removedDuplicates, setRemovedDuplicates] = useState<string[]>([]);
+  
+  const [selectedRecipes, setSelectedRecipes] = useState<string[]>([]);
+  const [bulkActionDialogOpen, setBlkActionDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<'regenerate' | 'delete' | null>(null);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   
   const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
@@ -373,7 +379,6 @@ const AdminRecipesPage = () => {
           description: `Removed ${result.removed} duplicate recipes`,
         });
         
-        // Refresh the recipes list after removing duplicates
         await loadRecipes();
       } else {
         toast({
@@ -397,6 +402,105 @@ const AdminRecipesPage = () => {
 
   const getLocalFallbackImage = () => {
     return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
+  };
+
+  const toggleSelectRecipe = (recipeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedRecipes(prev => {
+      if (prev.includes(recipeId)) {
+        return prev.filter(id => id !== recipeId);
+      } else {
+        return [...prev, recipeId];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRecipes.length === filteredAndSortedRecipes.length) {
+      setSelectedRecipes([]);
+    } else {
+      setSelectedRecipes(filteredAndSortedRecipes.map(recipe => recipe.id));
+    }
+  };
+
+  const openBulkActionDialog = (action: 'regenerate' | 'delete') => {
+    if (selectedRecipes.length === 0) {
+      toast({
+        title: "No recipes selected",
+        description: "Please select at least one recipe first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setBulkAction(action);
+    setBlkActionDialogOpen(true);
+  };
+
+  const executeBulkAction = async () => {
+    if (!bulkAction || selectedRecipes.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    
+    try {
+      if (bulkAction === 'regenerate') {
+        for (const recipeId of selectedRecipes) {
+          const recipe = recipes.find(r => r.id === recipeId);
+          if (recipe) {
+            toast({
+              title: "Processing",
+              description: `Regenerating data for "${recipe.title}"...`,
+            });
+            
+            await databasePopulationService.populateSingleRecipe(recipe.title, true);
+          }
+        }
+        
+        toast({
+          title: "Success",
+          description: `${selectedRecipes.length} recipes have been regenerated`,
+        });
+        
+      } else if (bulkAction === 'delete') {
+        for (const recipeId of selectedRecipes) {
+          await deleteRecipe(recipeId);
+        }
+        
+        setRecipes(prev => prev.filter(recipe => !selectedRecipes.includes(recipe.id)));
+        
+        setRecipeIngredients(prev => {
+          const newState = {...prev};
+          selectedRecipes.forEach(id => delete newState[id]);
+          return newState;
+        });
+        
+        setRecipeSteps(prev => {
+          const newState = {...prev};
+          selectedRecipes.forEach(id => delete newState[id]);
+          return newState;
+        });
+        
+        toast({
+          title: "Success",
+          description: `${selectedRecipes.length} recipes have been deleted`,
+        });
+      }
+      
+      setSelectedRecipes([]);
+      await loadRecipes();
+      
+    } catch (error) {
+      console.error(`Error performing bulk action:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to ${bulkAction} recipes`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsBulkProcessing(false);
+      setBlkActionDialogOpen(false);
+      setBulkAction(null);
+    }
   };
 
   const filteredAndSortedRecipes = (() => {
@@ -432,7 +536,34 @@ const AdminRecipesPage = () => {
           <CardDescription>
             Manage your recipes, remove duplicates, and update recipe information.
           </CardDescription>
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-between mt-4">
+            <div className="flex items-center gap-2">
+              {selectedRecipes.length > 0 && (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedRecipes.length} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openBulkActionDialog('regenerate')}
+                    className="border-kusina-orange/20 text-kusina-orange hover:bg-kusina-orange/10"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Regenerate Selected
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm" 
+                    onClick={() => openBulkActionDialog('delete')}
+                    className="border-kusina-red/20 text-kusina-red hover:bg-kusina-red/10"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Selected
+                  </Button>
+                </>
+              )}
+            </div>
             <Button
               onClick={handleRemoveDuplicates}
               className="bg-kusina-orange text-white hover:bg-kusina-orange/80"
@@ -541,6 +672,13 @@ const AdminRecipesPage = () => {
               <Table>
                 <TableHeader className="bg-kusina-cream/30">
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox 
+                        checked={selectedRecipes.length > 0 && selectedRecipes.length === filteredAndSortedRecipes.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all recipes"
+                      />
+                    </TableHead>
                     <TableHead className="w-[300px]">Recipe</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Difficulty</TableHead>
@@ -550,17 +688,27 @@ const AdminRecipesPage = () => {
                 <TableBody>
                   {filteredAndSortedRecipes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         No recipes found
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredAndSortedRecipes.map(recipe => (
-                      
                       <React.Fragment key={recipe.id}>
                         <TableRow 
                           className="cursor-pointer hover:bg-kusina-cream/20"
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()} className="p-0 pl-4">
+                            <Checkbox 
+                              checked={selectedRecipes.includes(recipe.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked !== "indeterminate") {
+                                  toggleSelectRecipe(recipe.id, { stopPropagation: () => {} } as React.MouseEvent);
+                                }
+                              }}
+                              aria-label={`Select ${recipe.title}`}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium flex items-center gap-3">
                             <div 
                               className="w-10 h-10 rounded-md overflow-hidden shrink-0 hover:ring-2 hover:ring-kusina-orange/50 transition-all cursor-pointer bg-gray-300"
@@ -640,7 +788,7 @@ const AdminRecipesPage = () => {
                         
                         {expandedRecipe === recipe.id && (
                           <TableRow>
-                            <TableCell colSpan={4} className="p-0">
+                            <TableCell colSpan={5} className="p-0">
                               <div className="px-4 py-3 bg-kusina-cream/20">
                                 <Accordion type="single" collapsible className="w-full">
                                   <AccordionItem value="ingredients" className="border-none">
@@ -710,7 +858,6 @@ const AdminRecipesPage = () => {
                           </TableRow>
                         )}
                       </React.Fragment>
-                      
                     ))
                   )}
                 </TableBody>
@@ -844,6 +991,46 @@ const AdminRecipesPage = () => {
                 <Copy className="mr-2 h-4 w-4" />
               )}
               Remove Duplicates
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBlkActionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={bulkAction === 'delete' ? "text-kusina-red" : "text-kusina-orange"}>
+              {bulkAction === 'regenerate' ? 'Regenerate Selected Recipes' : 'Delete Selected Recipes'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === 'regenerate' 
+                ? `Are you sure you want to regenerate all ${selectedRecipes.length} selected recipes? This will replace their current ingredients and steps with AI-generated ones.`
+                : `Are you sure you want to delete all ${selectedRecipes.length} selected recipes? This action cannot be undone.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeBulkAction}
+              disabled={isBulkProcessing}
+              className={bulkAction === 'delete' 
+                ? "bg-kusina-red text-white hover:bg-kusina-red/80"
+                : "bg-kusina-orange text-white hover:bg-kusina-orange/80"
+              }
+            >
+              {isBulkProcessing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : bulkAction === 'delete' ? (
+                <Trash2 className="mr-2 h-4 w-4" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {bulkAction === 'regenerate' ? 'Regenerate Selected' : 'Delete Selected'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
