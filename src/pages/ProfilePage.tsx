@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, History, Settings } from 'lucide-react';
+import { User, History, Settings, Database } from 'lucide-react';
 import MobileNavBar from '@/components/MobileNavBar';
 
 const ProfilePage = () => {
@@ -43,6 +43,31 @@ const ProfilePage = () => {
             >
               <History className="mr-2 h-4 w-4" />
               Cooking History
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Features</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate('/admin')}
+            >
+              <Database className="mr-2 h-4 w-4" />
+              Admin Dashboard
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate('/admin/recipes')}
+            >
+              <Database className="mr-2 h-4 w-4" />
+              Manage Recipes
             </Button>
           </CardContent>
         </Card>
