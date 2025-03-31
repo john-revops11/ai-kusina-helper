@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -9,8 +10,7 @@ import {
   ChevronUp,
   Image,
   Check,
-  X,
-  Trash2
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,23 +38,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { 
   fetchRecipes, 
   fetchIngredientsByRecipeId,
   fetchRecipeSteps,
-  updateRecipeImage,
-  deleteDuplicateRecipes
+  updateRecipeImage
 } from '@/services/recipeService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
@@ -74,8 +63,6 @@ const AdminRecipesPage = () => {
   const [newImageUrl, setNewImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [isUpdatingImage, setIsUpdatingImage] = useState(false);
-  const [isDeletingDuplicates, setIsDeletingDuplicates] = useState(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,12 +93,14 @@ const AdminRecipesPage = () => {
     }
 
     try {
+      // Fetch ingredients
       const ingredients = await fetchIngredientsByRecipeId(recipeId);
       setRecipeIngredients(prev => ({
         ...prev,
         [recipeId]: ingredients
       }));
 
+      // Fetch steps
       const steps = await fetchRecipeSteps(recipeId);
       setRecipeSteps(prev => ({
         ...prev,
@@ -137,6 +126,7 @@ const AdminRecipesPage = () => {
   };
 
   const regenerateRecipeData = async (recipe: Recipe) => {
+    // Set regenerating state for this recipe
     setRegenerating(prev => ({ ...prev, [recipe.id]: true }));
     
     try {
@@ -145,16 +135,24 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      const recipeId = await databasePopulationService.populateSingleRecipe(recipe.title, true);
+      // Delete existing recipe data first to ensure clean regeneration
+      // Then populate with fresh AI-generated data
+      await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
       
-      if (recipeId) {
-        toast({
-          title: "Success",
-          description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
-        });
+      toast({
+        title: "Success",
+        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
+      });
+      
+      // Reload all recipes to show the updated data
+      await loadRecipes();
+      
+      // If this recipe was expanded, reload its details
+      if (expandedRecipe === recipe.id) {
+        // Remove from expanded state temporarily
+        setExpandedRecipe(null);
         
-        await loadRecipes();
-        
+        // Clear the cached data for this recipe
         setRecipeIngredients(prev => {
           const newState = {...prev};
           delete newState[recipe.id];
@@ -166,10 +164,6 @@ const AdminRecipesPage = () => {
           delete newState[recipe.id];
           return newState;
         });
-        
-        if (expandedRecipe === recipe.id) {
-          loadRecipeDetails(recipeId);
-        }
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
@@ -179,6 +173,7 @@ const AdminRecipesPage = () => {
         variant: "destructive"
       });
     } finally {
+      // Clear regenerating state
       setRegenerating(prev => ({ ...prev, [recipe.id]: false }));
     }
   };
@@ -188,6 +183,7 @@ const AdminRecipesPage = () => {
     setNewImageUrl(recipe.imageUrl);
     setImagePreview(recipe.imageUrl);
     setImageDialogOpen(true);
+    // Focus the input after dialog opens
     setTimeout(() => {
       if (imageUrlInputRef.current) {
         imageUrlInputRef.current.focus();
@@ -208,6 +204,7 @@ const AdminRecipesPage = () => {
     try {
       await updateRecipeImage(selectedRecipe.id, newImageUrl);
       
+      // Update the recipe in the local state
       const updatedRecipes = recipes.map(r => {
         if (r.id === selectedRecipe.id) {
           return { ...r, imageUrl: newImageUrl };
@@ -234,42 +231,6 @@ const AdminRecipesPage = () => {
     }
   };
 
-  const handleDeleteDuplicates = async () => {
-    setConfirmDialogOpen(false);
-    setIsDeletingDuplicates(true);
-    
-    try {
-      toast({
-        title: "Processing",
-        description: "Finding and deleting duplicate recipes...",
-      });
-      
-      const deletedIds = await deleteDuplicateRecipes();
-      
-      if (deletedIds.length > 0) {
-        toast({
-          title: "Success",
-          description: `Deleted ${deletedIds.length} duplicate recipe(s)`,
-        });
-        await loadRecipes();
-      } else {
-        toast({
-          title: "Information",
-          description: "No duplicate recipes were found",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting duplicates:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete duplicate recipes",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeletingDuplicates(false);
-    }
-  };
-
   const filteredRecipes = recipes.filter(recipe => 
     recipe?.title ? recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) : false
   );
@@ -283,23 +244,7 @@ const AdminRecipesPage = () => {
       
       <Card className="border-kusina-orange/20 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-kusina-orange/10 to-transparent">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-kusina-brown text-2xl">Recipe Management</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-kusina-red/30 text-kusina-red hover:bg-kusina-red/10"
-              onClick={() => setConfirmDialogOpen(true)}
-              disabled={isDeletingDuplicates}
-            >
-              {isDeletingDuplicates ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              Remove Duplicates
-            </Button>
-          </div>
+          <CardTitle className="text-kusina-brown text-2xl">Recipe Management</CardTitle>
         </CardHeader>
         
         <CardContent>
@@ -493,6 +438,7 @@ const AdminRecipesPage = () => {
         </CardContent>
       </Card>
 
+      {/* Image Update Dialog */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -565,27 +511,6 @@ const AdminRecipesPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Duplicate Recipes</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will find recipes with the same title and keep only the most recent version of each.
-              This action cannot be undone. Are you sure you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteDuplicates}
-              className="bg-kusina-red text-white hover:bg-kusina-red/80"
-            >
-              Delete Duplicates
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

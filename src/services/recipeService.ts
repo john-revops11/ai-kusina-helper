@@ -1,4 +1,5 @@
-import { database, ref, get, child, update, remove } from './firebase';
+
+import { database, ref, get, child, update } from './firebase';
 import type { Recipe } from '@/components/RecipeCard';
 import type { RecipeStep } from '@/components/RecipeStepCard';
 import type { Ingredient } from '@/components/IngredientItem';
@@ -144,86 +145,6 @@ export const updateRecipeImage = async (recipeId: string, imageUrl: string): Pro
     console.log(`Updated image for recipe ${recipeId}`);
   } catch (error) {
     console.error("Error updating recipe image:", error);
-    throw error;
-  }
-};
-
-/**
- * Finds and deletes duplicate recipes from the database
- * @returns An array of deleted recipe IDs
- */
-export const deleteDuplicateRecipes = async (): Promise<string[]> => {
-  try {
-    // Fetch all recipes
-    const recipes = await fetchRecipes();
-    
-    // Create a map to track recipes by title (normalized to lowercase)
-    const recipeMap: Record<string, Recipe[]> = {};
-    
-    // Group recipes by their normalized title
-    recipes.forEach(recipe => {
-      const normalizedTitle = recipe.title.toLowerCase().trim();
-      if (!recipeMap[normalizedTitle]) {
-        recipeMap[normalizedTitle] = [];
-      }
-      recipeMap[normalizedTitle].push(recipe);
-    });
-    
-    // Find duplicate recipes (any title with more than one recipe)
-    const duplicateSets = Object.values(recipeMap).filter(group => group.length > 1);
-    
-    if (duplicateSets.length === 0) {
-      console.log("No duplicate recipes found");
-      return [];
-    }
-    
-    // For each set of duplicates, keep the most recently created one (assuming it has the most data)
-    // and delete the others
-    const deletedRecipeIds: string[] = [];
-    
-    for (const duplicateGroup of duplicateSets) {
-      // Sort by ID (assuming higher IDs are more recent)
-      // This is a simple heuristic - if your IDs have a different structure,
-      // you might want to use a different approach
-      duplicateGroup.sort((a, b) => b.id.localeCompare(a.id));
-      
-      // Keep the first one (most recent by our sorting) and delete the rest
-      const [keeper, ...toDelete] = duplicateGroup;
-      
-      console.log(`Found duplicates for "${keeper.title}". Keeping ${keeper.id}, deleting ${toDelete.length} others.`);
-      
-      // Delete each duplicate
-      for (const recipe of toDelete) {
-        await deleteRecipe(recipe.id);
-        deletedRecipeIds.push(recipe.id);
-      }
-    }
-    
-    return deletedRecipeIds;
-  } catch (error) {
-    console.error("Error deleting duplicate recipes:", error);
-    return [];
-  }
-};
-
-/**
- * Deletes a recipe and all its related data (ingredients, steps, etc.)
- * @param recipeId ID of the recipe to delete
- */
-export const deleteRecipe = async (recipeId: string): Promise<void> => {
-  try {
-    // Delete the recipe
-    await remove(ref(database, `recipes/${recipeId}`));
-    
-    // Delete related ingredients
-    await remove(ref(database, `ingredients/${recipeId}`));
-    
-    // Delete related steps
-    await remove(ref(database, `steps/${recipeId}`));
-    
-    console.log(`Deleted recipe ${recipeId} and all related data`);
-  } catch (error) {
-    console.error(`Error deleting recipe ${recipeId}:`, error);
     throw error;
   }
 };

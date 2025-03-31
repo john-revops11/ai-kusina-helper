@@ -137,8 +137,6 @@ export const saveRecipeToDatabase = async (
   steps: RecipeStep[]
 ): Promise<boolean> => {
   try {
-    console.log("Saving recipe to database:", recipe.id, recipe.title);
-    
     // Save recipe details
     await set(ref(database, `recipes/${recipe.id}`), {
       title: recipe.title,
@@ -178,7 +176,6 @@ export const saveRecipeToDatabase = async (
     });
     await set(ref(database, `steps/${recipe.id}`), stepsObj);
     
-    console.log("Successfully saved recipe:", recipe.id);
     return true;
   } catch (error) {
     console.error('Error saving recipe to database:', error);

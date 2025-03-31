@@ -1,4 +1,5 @@
-import { database, ref, get, child, set, remove, update } from './firebase';
+
+import { database, ref, get, child, set, remove } from './firebase';
 import { geminiService } from './geminiService';
 import { toast } from "sonner";
 
@@ -188,7 +189,7 @@ export const databasePopulationService = {
   /**
    * Gets recipe data from Gemini AI with enhanced accuracy
    */
-  async getRecipeDataFromGemini(recipeName: string, existingRecipeId?: string): Promise<RecipePopulationData> {
+  async getRecipeDataFromGemini(recipeName: string): Promise<RecipePopulationData> {
     const prompt = `
       Generate highly accurate detailed information about the authentic Filipino dish "${recipeName}".
       
@@ -217,13 +218,12 @@ export const databasePopulationService = {
       if (!jsonMatch) {
         // Fallback to creating default recipe data if Gemini fails
         console.warn(`No valid JSON found in Gemini response for ${recipeName}, using fallback data`);
-        return this.createFallbackRecipeData(recipeName, existingRecipeId);
+        return this.createFallbackRecipeData(recipeName);
       }
       
       try {
         const recipeData = JSON.parse(jsonMatch[0]) as RecipePopulationData;
-        // Use existing ID if provided, otherwise generate a new one
-        recipeData.id = existingRecipeId || this.generateId();
+        recipeData.id = this.generateId();
         
         // Ensure the image URL is valid by replacing spaces and using a default pattern
         if (!recipeData.imageUrl || recipeData.imageUrl.includes('INSERT_IMAGE_URL')) {
@@ -233,19 +233,19 @@ export const databasePopulationService = {
         return recipeData;
       } catch (parseError) {
         console.error(`Error parsing JSON for ${recipeName}:`, parseError);
-        return this.createFallbackRecipeData(recipeName, existingRecipeId);
+        return this.createFallbackRecipeData(recipeName);
       }
     } catch (error) {
       console.error(`Error getting recipe data for ${recipeName}:`, error);
       toast.error(`Failed to get recipe data for ${recipeName}`);
-      return this.createFallbackRecipeData(recipeName, existingRecipeId);
+      return this.createFallbackRecipeData(recipeName);
     }
   },
   
   /**
    * Creates fallback recipe data when Gemini API fails
    */
-  createFallbackRecipeData(recipeName: string, existingRecipeId?: string): RecipePopulationData {
+  createFallbackRecipeData(recipeName: string): RecipePopulationData {
     let category = 'Main Dish';
     
     // Determine category based on recipe name
@@ -264,7 +264,7 @@ export const databasePopulationService = {
     }
     
     return {
-      id: existingRecipeId || this.generateId(),
+      id: this.generateId(),
       title: recipeName,
       description: `Traditional Filipino dish known as ${recipeName}. This is a fallback description as AI generation failed.`,
       category,
@@ -500,52 +500,33 @@ export const databasePopulationService = {
   /**
    * Populates a single recipe in the database
    * @param recipeName The name of the recipe to populate
-   * @param forceRegenerate If true, will update the existing recipe if found instead of skipping it
+   * @param forceRegenerate If true, will delete the existing recipe if found and regenerate it
    */
-  async populateSingleRecipe(recipeName: string, forceRegenerate: boolean = false): Promise<string | null> {
+  async populateSingleRecipe(recipeName: string, forceRegenerate: boolean = false): Promise<void> {
     try {
       // Check if recipe already exists
       const existingRecipeId = await this.findExistingRecipeId(recipeName);
       
       if (existingRecipeId) {
         if (forceRegenerate) {
-          console.log(`Recipe ${recipeName} exists and will be updated as requested`);
-          // We will update the existing recipe instead of deleting and recreating
+          console.log(`Recipe ${recipeName} exists but will be regenerated as requested`);
+          // Delete the existing recipe
+          await this.deleteExistingRecipe(existingRecipeId);
         } else {
           console.log(`Recipe ${recipeName} already exists in database, skipping`);
           toast.info(`Recipe "${recipeName}" already exists in database`);
-          return existingRecipeId;
+          return;
         }
       }
       
-      // 1. Get recipe data (using existingRecipeId if we're updating)
-      const recipeData = await this.getRecipeDataFromGemini(recipeName, existingRecipeId);
+      // 1. Get recipe data
+      const recipeData = await this.getRecipeDataFromGemini(recipeName);
       
       // 2. Get ingredients data
       const ingredientsData = await this.getIngredientsDataFromGemini(recipeName);
       
       // 3. Get recipe steps
       const stepsData = await this.getRecipeStepsFromGemini(recipeName);
-      
-      // If updating, first clean up existing related data
-      if (existingRecipeId && forceRegenerate) {
-        // Just remove ingredients and steps, but not the main recipe to maintain references
-        await remove(ref(database, `ingredients/${existingRecipeId}`));
-        await remove(ref(database, `steps/${existingRecipeId}`));
-        
-        // Clean up ingredient substitutions
-        const ingredientsRef = ref(database);
-        const ingredientsSnapshot = await get(child(ingredientsRef, `ingredients/${existingRecipeId}`));
-        
-        if (ingredientsSnapshot.exists()) {
-          const ingredients = ingredientsSnapshot.val();
-          for (const id in ingredients) {
-            if (ingredients[id].hasSubstitutions) {
-              await remove(ref(database, `substitutes/${id}`));
-            }
-          }
-        }
-      }
       
       // 4. Store recipe in database
       await set(ref(database, `recipes/${recipeData.id}`), {
@@ -586,13 +567,11 @@ export const databasePopulationService = {
         }
       }
       
-      if (existingRecipeId && forceRegenerate) {
-        toast.success(`Recipe "${recipeName}" updated with enhanced accuracy`);
+      if (forceRegenerate) {
+        toast.success(`Recipe "${recipeName}" regenerated with enhanced accuracy`);
       } else {
         toast.success(`Recipe "${recipeName}" populated successfully`);
       }
-      
-      return recipeData.id;
     } catch (error) {
       console.error(`Error populating recipe ${recipeName}:`, error);
       toast.error(`Failed to populate recipe "${recipeName}"`);
