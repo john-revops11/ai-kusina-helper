@@ -61,7 +61,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
         </Button>
       )}
       
-      <ScrollArea className="w-full" viewportRef={scrollContainerRef}>
+      <ScrollArea className="w-full">
         <div className="flex space-x-2 pb-2 pt-1 px-1" ref={scrollContainerRef}>
           {categories.map((category) => (
             <Button
