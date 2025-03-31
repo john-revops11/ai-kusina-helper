@@ -16,6 +16,9 @@ import AdminRecipesPage from "./pages/AdminRecipesPage";
 import AdminImportPage from "./pages/AdminImportPage";
 import NotFound from "./pages/NotFound";
 
+// Import agent system to initialize it
+import '@/agents';
+
 import "./App.css";
 
 function App() {

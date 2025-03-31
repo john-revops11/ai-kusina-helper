@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -23,6 +22,7 @@ import MobileNavBar from '@/components/MobileNavBar';
 import IngredientItem from '@/components/IngredientItem';
 import RecipeStepCard from '@/components/RecipeStepCard';
 import AIChatBox from '@/components/AIChatBox';
+import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
 import { 
   fetchRecipeById, 
   fetchIngredientsByRecipeId, 
@@ -32,6 +32,7 @@ import {
 } from '@/services/recipeService';
 import { Ingredient } from '@/components/IngredientItem';
 import { RecipeStep } from '@/components/RecipeStepCard';
+import agentOrchestrator from '@/agents';
 
 const RecipeDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +51,7 @@ const RecipeDetail = () => {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
+  const [conversationId, setConversationId] = useState<string>('');
 
   useEffect(() => {
     const loadRecipeData = async () => {
@@ -57,22 +59,17 @@ const RecipeDetail = () => {
       
       setIsLoading(true);
       try {
-        // Fetch recipe details
         const recipeData = await fetchRecipeById(id);
         if (recipeData) {
           setRecipe(recipeData);
           
-          // Fetch ingredients
           const ingredientsData = await fetchIngredientsByRecipeId(id);
           setIngredients(ingredientsData);
           
-          // Fetch recipe steps
           const stepsData = await fetchRecipeSteps(id);
-          // Sort steps by number to ensure correct order
           const sortedSteps = stepsData.sort((a, b) => a.number - b.number);
           setSteps(sortedSteps);
           
-          // Fetch substitutes for ingredients that have them
           const substitutesPromises = ingredientsData
             .filter(ing => ing.hasSubstitutions)
             .map(async (ing) => {
@@ -110,6 +107,13 @@ const RecipeDetail = () => {
     loadRecipeData();
   }, [id, toast]);
 
+  useEffect(() => {
+    if (recipe) {
+      const newConversationId = agentOrchestrator.createNewConversation();
+      setConversationId(newConversationId);
+    }
+  }, [recipe]);
+
   const toggleIngredientCheck = (id: string) => {
     setCheckedIngredients(prev => ({
       ...prev,
@@ -128,7 +132,6 @@ const RecipeDetail = () => {
     if (steps[activeStep]) {
       setRemainingTime(steps[activeStep].timeInMinutes * 60);
       setTimerRunning(true);
-      // In a real app, we would implement a timer countdown here
     }
   };
 
@@ -142,7 +145,6 @@ const RecipeDetail = () => {
       [id]: true
     }));
     
-    // Move to next step if available
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
     }
@@ -184,13 +186,12 @@ const RecipeDetail = () => {
 
   return (
     <div className="pb-20 min-h-screen">
-      {/* Header */}
       <div className="relative h-60">
         <img 
           src={recipe?.imageUrl} 
           alt={recipe?.title} 
           className="w-full h-full object-cover brightness-50"
-          loading="eager" // Load header image eagerly for better UX
+          loading="eager"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
@@ -218,9 +219,7 @@ const RecipeDetail = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="p-4 space-y-6">
-        {/* Ingredients */}
         <Accordion type="single" collapsible defaultValue="ingredients">
           <AccordionItem value="ingredients" className="border-b-0">
             <AccordionTrigger className="py-2">
@@ -244,11 +243,9 @@ const RecipeDetail = () => {
                         toast({
                           description: `${ingredient.name} added to shopping list`
                         });
-                        // In a real app, this would add to a shopping list
                       }}
                     />
                     
-                    {/* Show substitutes if available and toggled */}
                     {ingredient.hasSubstitutions && showSubstitutes[ingredient.id] && (
                       <div className="ml-8 mt-1 mb-2 p-2 bg-muted rounded-md text-sm">
                         <p className="font-medium text-xs mb-1">Substitutes:</p>
@@ -268,7 +265,6 @@ const RecipeDetail = () => {
           </AccordionItem>
         </Accordion>
 
-        {/* Cooking Steps */}
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="section-title">Cooking Steps</h2>
@@ -284,7 +280,7 @@ const RecipeDetail = () => {
 
           <div className="space-y-4">
             {steps
-              .sort((a, b) => a.number - b.number) // Ensure steps are always ordered by number
+              .sort((a, b) => a.number - b.number)
               .map((step, index) => (
                 <RecipeStepCard
                   key={step.id}
@@ -298,7 +294,7 @@ const RecipeDetail = () => {
                   onToggleVoice={toggleVoice}
                   voiceEnabled={voiceEnabled}
                 />
-            ))}
+              ))}
           </div>
           
           {activeStep < steps.length && (
@@ -311,7 +307,6 @@ const RecipeDetail = () => {
           )}
         </div>
 
-        {/* AI Assistant Toggle */}
         <div className="fixed bottom-20 right-4 z-40">
           <Button
             className="rounded-full h-12 w-12 shadow-lg flex items-center justify-center"
@@ -321,17 +316,21 @@ const RecipeDetail = () => {
           </Button>
         </div>
 
-        {/* AI Assistant Panel */}
         <div 
           className={`fixed bottom-20 left-4 right-4 z-30 transition-transform duration-300 ${
             aiAssistantOpen ? 'translate-y-0' : 'translate-y-full'
           }`}
         >
-          <AIChatBox recipeContext={recipe?.title} />
+          <EnhancedAIChatBox 
+            recipeId={id} 
+            recipeName={recipe?.title}
+            currentStepNumber={activeStep + 1}
+            conversationId={conversationId}
+            onNewConversation={setConversationId}
+          />
         </div>
       </div>
 
-      {/* Mobile Nav Bar */}
       <MobileNavBar />
     </div>
   );

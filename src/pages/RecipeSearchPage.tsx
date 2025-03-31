@@ -12,6 +12,8 @@ import { searchRecipeOnline, saveRecipeToDatabase } from '@/services/recipeSearc
 import type { Recipe } from '@/components/RecipeCard';
 import type { RecipeStep } from '@/components/RecipeStepCard';
 import type { Ingredient } from '@/components/IngredientItem';
+import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
+import agentOrchestrator from '@/agents';
 
 // Extended type for recipe detail
 type RecipeDetail = Recipe & {
@@ -33,6 +35,8 @@ const RecipeSearchPage = () => {
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
   const [foundOnline, setFoundOnline] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [conversationId, setConversationId] = useState<string>('');
   
   // Load recipes from database
   useEffect(() => {
@@ -108,30 +112,48 @@ const RecipeSearchPage = () => {
         description: 'Looking for recipe using AI...',
       });
       
-      const result = await searchRecipeOnline(query);
-      if (result) {
-        setSelectedRecipe(result.recipe);
-        setRecipeIngredients(result.ingredients);
-        setRecipeSteps(result.steps);
-        setFoundOnline(true);
+      // Use the agent orchestrator with the RecipeDiscoveryAgent
+      const response = await agentOrchestrator.processRequest(
+        query,
+        'RecipeDiscovery', // Specify the agent to use
+        { conversationId }
+      );
+      
+      if (response.success && response.data) {
+        if (response.source === 'ai') {
+          // For AI-generated recipes
+          setSelectedRecipe(response.data.recipe);
+          setRecipeIngredients(response.data.ingredients);
+          setRecipeSteps(response.data.steps);
+          setFoundOnline(true);
+        } else {
+          // For database recipes
+          setSelectedRecipe(response.data);
+          // Fetch ingredients and steps for this recipe
+          const ingredients = await fetchIngredientsByRecipeId(response.data.id);
+          const steps = await fetchRecipeSteps(response.data.id);
+          setRecipeIngredients(ingredients);
+          setRecipeSteps(steps);
+          setFoundOnline(false);
+        }
         
         toast({
           title: 'Recipe Found',
-          description: `Found recipe for "${query}" using AI`,
+          description: `Found recipe for "${query}"`,
         });
       } else {
         toast({
           title: 'Not Found',
           description: `AI couldn't find a recipe for "${query}"`,
-          variant: 'destructive',
+          style: { backgroundColor: "red", color: "white" }
         });
       }
     } catch (error) {
-      console.error('Error searching recipe online:', error);
+      console.error('Error searching recipe:', error);
       toast({
         title: 'Error',
         description: 'Failed to search for recipe using AI',
-        variant: 'destructive',
+        style: { backgroundColor: "red", color: "white" }
       });
     } finally {
       setIsSearchingOnline(false);
@@ -225,6 +247,14 @@ const RecipeSearchPage = () => {
     }
   };
 
+  // Initialize conversation ID
+  useEffect(() => {
+    if (!conversationId) {
+      const newConversationId = agentOrchestrator.createNewConversation();
+      setConversationId(newConversationId);
+    }
+  }, [conversationId]);
+
   return (
     <div className="pb-20 min-h-screen">
       {/* Header */}
@@ -239,6 +269,13 @@ const RecipeSearchPage = () => {
           </Button>
           <h1 className="text-xl font-bold">Recipe Search</h1>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAIChat(!showAIChat)}
+        >
+          {showAIChat ? 'Hide AI Chat' : 'Ask AI Assistant'}
+        </Button>
       </header>
 
       {/* Main Content */}
@@ -371,6 +408,18 @@ const RecipeSearchPage = () => {
               )}
             </CardContent>
           </Card>
+        )}
+        
+        {/* AI Chat Box if shown */}
+        {showAIChat && (
+          <div className="mb-6">
+            <EnhancedAIChatBox 
+              conversationId={conversationId}
+              onNewConversation={setConversationId}
+              recipeId={selectedRecipe?.id}
+              recipeName={selectedRecipe?.title}
+            />
+          </div>
         )}
       </main>
 
