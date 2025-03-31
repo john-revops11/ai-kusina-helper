@@ -166,35 +166,51 @@ export const deleteRecipe = async (recipeId: string): Promise<void> => {
   }
 };
 
-// New function to remove duplicate recipes
+// New function to remove duplicate recipes - updated to keep most recent
 export const removeDuplicateRecipes = async (): Promise<{removed: number, recipeNames: string[]}> => {
   try {
     const recipes = await fetchRecipes();
     
     // Create a map to track recipes by title (case insensitive)
-    const uniqueRecipes: Map<string, Recipe> = new Map();
+    const recipeMap: Map<string, Recipe[]> = new Map();
     const duplicatesToRemove: Recipe[] = [];
     const removedRecipeNames: string[] = [];
     
-    // First pass - identify the duplicates (keeping the first occurrence)
+    // Group recipes by normalized title
     recipes.forEach(recipe => {
       const normalizedTitle = recipe.title.toLowerCase().trim();
       
-      if (!uniqueRecipes.has(normalizedTitle)) {
-        // Keep this recipe as the unique one
-        uniqueRecipes.set(normalizedTitle, recipe);
+      if (!recipeMap.has(normalizedTitle)) {
+        recipeMap.set(normalizedTitle, [recipe]);
       } else {
-        // This is a duplicate, mark for removal
-        duplicatesToRemove.push(recipe);
-        removedRecipeNames.push(recipe.title);
+        const existingRecipes = recipeMap.get(normalizedTitle) || [];
+        recipeMap.set(normalizedTitle, [...existingRecipes, recipe]);
       }
     });
     
-    // Second pass - remove the duplicates
+    // For each group of recipes with the same title, keep only the most recent one
+    // (assuming more recent recipes have higher ID values or were added later in the array)
+    recipeMap.forEach((recipeGroup, normalizedTitle) => {
+      if (recipeGroup.length > 1) {
+        // Sort recipes by ID in descending order to get the most recent first
+        // This assumes newer recipes have higher/later IDs
+        const sortedRecipes = [...recipeGroup].sort((a, b) => b.id.localeCompare(a.id));
+        
+        // Keep the first one (most recent) and mark the rest for removal
+        const [keep, ...remove] = sortedRecipes;
+        
+        remove.forEach(recipe => {
+          duplicatesToRemove.push(recipe);
+          removedRecipeNames.push(recipe.title);
+        });
+      }
+    });
+    
+    // Delete the duplicates
     const deletePromises = duplicatesToRemove.map(recipe => deleteRecipe(recipe.id));
     await Promise.all(deletePromises);
     
-    console.log(`Removed ${duplicatesToRemove.length} duplicate recipes`);
+    console.log(`Removed ${duplicatesToRemove.length} duplicate recipes, keeping most recent versions`);
     return {
       removed: duplicatesToRemove.length,
       recipeNames: removedRecipeNames
