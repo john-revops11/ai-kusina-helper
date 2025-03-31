@@ -148,6 +148,16 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Gemini API error response:", errorData);
+        
+        // Handle rate limit errors specifically
+        if (errorData.error && errorData.error.code === 429) {
+          toast("API rate limit exceeded. Please try again later.", {
+            description: "The recipe search service is temporarily unavailable",
+            style: { backgroundColor: "red", color: "white" }
+          });
+          throw new Error(`Gemini API rate limit exceeded: ${JSON.stringify(errorData)}`);
+        }
+        
         throw new Error(`Gemini API error: ${JSON.stringify(errorData)}`);
       }
       
@@ -166,19 +176,19 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       }
       
       const responseText = candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
-      console.log("Raw AI response:", responseText);
+      console.log("AI Response:", responseText);
       
       // Extract JSON content
       try {
-        // Check if the response contains valid JSON by looking for opening brace
-        if (responseText.includes('{')) {
+        // Check if the response contains valid JSON by looking for opening and closing braces
+        if (responseText.includes('{') && responseText.includes('}')) {
           const jsonStart = responseText.indexOf('{');
           const jsonEnd = responseText.lastIndexOf('}') + 1;
           
           if (jsonStart >= 0 && jsonEnd > jsonStart) {
             const jsonString = responseText.substring(jsonStart, jsonEnd);
             // Validate that it can be parsed as JSON before returning
-            JSON.parse(jsonString);
+            JSON.parse(jsonString); // This will throw if invalid
             return jsonString;
           }
         }
@@ -187,13 +197,51 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
         return responseText;
       } catch (jsonError) {
         console.error("Error parsing JSON from AI response:", jsonError);
-        console.log("Original response:", responseText);
-        // Return the original text if JSON parsing fails
-        return responseText;
+        console.log("Problematic response:", responseText);
+        
+        // Return a fallback empty recipe structure instead of failing completely
+        const fallbackRecipe = {
+          recipe: {
+            title: "Recipe Not Available",
+            description: "The AI couldn't generate a valid recipe at this time.",
+            category: "Unknown",
+            difficulty: "Medium",
+            prepTime: "N/A",
+            cookTime: "N/A",
+            servings: 0,
+            instructions: "Recipe generation failed. Please try again later."
+          },
+          ingredients: [],
+          steps: []
+        };
+        
+        toast("Could not process recipe data from AI", {
+          description: "Please try searching for a different recipe",
+          style: { backgroundColor: "red", color: "white" }
+        });
+        
+        return JSON.stringify(fallbackRecipe);
       }
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
-      return "I'm sorry, I couldn't process your request at this time. Please try again later.";
+      
+      // Provide a fallback response with empty recipe structure
+      const fallbackResponse = {
+        recipe: {
+          title: "Recipe Unavailable",
+          description: "The recipe service is currently unavailable.",
+          category: "Unknown",
+          difficulty: "Medium", 
+          prepTime: "N/A",
+          cookTime: "N/A",
+          servings: 0,
+          instructions: "Recipe generation failed. Please try again later."
+        },
+        ingredients: [],
+        steps: []
+      };
+      
+      return JSON.stringify(fallbackResponse);
     }
   }
 };

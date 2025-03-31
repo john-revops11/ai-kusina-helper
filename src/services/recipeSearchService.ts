@@ -26,44 +26,31 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions. Only return the JSON object.`;
     
     // Call Gemini AI to get recipe information
+    toast(`Searching for "${recipeName}" recipe...`, {
+      description: "Connecting to AI service"
+    });
+    
     const aiResponse = await geminiService.generateContent(prompt);
     console.log("AI Response:", aiResponse);
     
-    // Extract the JSON from the response (in case the AI included additional text)
-    let jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
-    
-    if (!jsonMatch) {
-      console.error("Could not extract JSON from AI response");
-      toast("The AI response format was invalid. Please try again.", {
-        description: "Error processing recipe data",
-        style: { backgroundColor: "red", color: "white" }
+    // Check if the response starts with error message
+    if (aiResponse.startsWith("I'm sorry") || aiResponse.includes("Recipe Not Available") || aiResponse.includes("Recipe Unavailable")) {
+      toast.error(`Could not find recipe for "${recipeName}"`, {
+        description: "Try a different recipe or try again later"
       });
       return null;
     }
     
-    let jsonStr = jsonMatch[0];
+    let jsonStr = aiResponse;
     
-    // Attempt to clean the JSON string if needed
-    jsonStr = jsonStr.replace(/\\n/g, "")
-                      .replace(/\\"/g, '"')
-                      .replace(/\\t/g, "")
-                      .replace(/\\/g, "\\\\");
-    
+    // Try to clean the response string if needed
     try {
-      // Parse the JSON response
+      // Parse the JSON response - this might throw if JSON is invalid
       const recipeData = JSON.parse(jsonStr);
       
       // Validate the structure of the response
       if (!recipeData.recipe || !recipeData.ingredients || !recipeData.steps) {
         throw new Error("Incomplete recipe data structure");
-      }
-      
-      if (!recipeData.recipe.title || !recipeData.recipe.category || !recipeData.recipe.difficulty) {
-        throw new Error("Missing required recipe fields");
-      }
-      
-      if (recipeData.ingredients.length === 0 || recipeData.steps.length === 0) {
-        throw new Error("Missing ingredients or steps");
       }
       
       // Generate a reliable image URL from Unsplash for the recipe
@@ -73,44 +60,44 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       // Format the response to match our expected structure
       const recipe = {
         id: recipeId,
-        title: recipeData.recipe.title,
+        title: recipeData.recipe.title || recipeName,
         imageUrl: imageUrl,
-        prepTime: recipeData.recipe.prepTime,
-        category: recipeData.recipe.category,
-        difficulty: recipeData.recipe.difficulty,
-        description: recipeData.recipe.description,
-        servings: recipeData.recipe.servings,
-        cookTime: recipeData.recipe.cookTime,
-        instructions: recipeData.recipe.instructions
+        prepTime: recipeData.recipe.prepTime || "30 minutes",
+        category: recipeData.recipe.category || "Main Dish",
+        difficulty: recipeData.recipe.difficulty || "Medium",
+        description: recipeData.recipe.description || "A delicious Filipino dish",
+        servings: recipeData.recipe.servings || 4,
+        cookTime: recipeData.recipe.cookTime || "45 minutes",
+        instructions: recipeData.recipe.instructions || "Follow the steps below to prepare this dish."
       };
       
-      // Format ingredients
-      const ingredients = recipeData.ingredients.map((ing: any) => ({
+      // Format ingredients with fallback for required fields
+      const ingredients = Array.isArray(recipeData.ingredients) ? recipeData.ingredients.map((ing: any, index: number) => ({
         id: `ing-${uuidv4()}`,
-        name: ing.name,
-        quantity: ing.quantity.toString(),
-        unit: ing.unit,
+        name: ing.name || `Ingredient ${index + 1}`,
+        quantity: (ing.quantity || "1").toString(),
+        unit: ing.unit || "",
         recipeId: recipeId,
         isOptional: ing.isOptional || false,
         hasSubstitutions: ing.hasSubstitutions || false
-      }));
+      })) : [];
       
-      // Format steps with reliable image URLs
-      const steps = recipeData.steps.map((step: any, index: number) => {
+      // Format steps with reliable image URLs and fallbacks
+      const steps = Array.isArray(recipeData.steps) ? recipeData.steps.map((step: any, index: number) => {
         // Add step images for key steps (every other step)
         const stepImageUrl = index % 2 === 0 ? 
-          `https://source.unsplash.com/featured/?cooking,${step.instruction.split(' ').slice(0, 2).join(',')}` : 
+          `https://source.unsplash.com/featured/?cooking,${step.instruction?.split(' ').slice(0, 2).join(',') || 'cooking'}` : 
           undefined;
           
         return {
           id: `step-${uuidv4()}`,
           number: step.number || index + 1, // Ensure we have a number even if missing
-          instruction: step.instruction,
+          instruction: step.instruction || `Step ${index + 1}`,
           timeInMinutes: typeof step.timeInMinutes === 'number' ? step.timeInMinutes : 5,
           isCritical: step.isCritical || false,
           imageUrl: stepImageUrl
         };
-      });
+      }) : [];
       
       // Log the created recipe for debugging
       console.log("Successfully created recipe:", {
@@ -118,6 +105,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         ingredients,
         steps
       });
+      
+      toast.success(`Found recipe for ${recipe.title}!`);
       
       return {
         recipe,
@@ -127,18 +116,20 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     } catch (error) {
       console.error('Error parsing recipe data:', error);
       console.error('Problematic JSON string:', jsonStr);
-      toast("Failed to parse recipe data. Please try again.", {
-        description: "The AI generated an invalid response format",
-        style: { backgroundColor: "red", color: "white" }
+      
+      toast.error("Failed to parse recipe data", {
+        description: "The AI generated an invalid response format"
       });
+      
       return null;
     }
   } catch (error) {
     console.error('Error searching recipe online:', error);
-    toast("Failed to search for recipe online. Please try again.", {
-        description: "Error connecting to AI service",
-        style: { backgroundColor: "red", color: "white" }
+    
+    toast.error("Failed to search for recipe online", {
+      description: "Error connecting to AI service"
     });
+    
     return null;
   }
 };
