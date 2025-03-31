@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -93,14 +92,12 @@ const AdminRecipesPage = () => {
     }
 
     try {
-      // Fetch ingredients
       const ingredients = await fetchIngredientsByRecipeId(recipeId);
       setRecipeIngredients(prev => ({
         ...prev,
         [recipeId]: ingredients
       }));
 
-      // Fetch steps
       const steps = await fetchRecipeSteps(recipeId);
       setRecipeSteps(prev => ({
         ...prev,
@@ -126,7 +123,6 @@ const AdminRecipesPage = () => {
   };
 
   const regenerateRecipeData = async (recipe: Recipe) => {
-    // Set regenerating state for this recipe
     setRegenerating(prev => ({ ...prev, [recipe.id]: true }));
     
     try {
@@ -135,37 +131,29 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      // Use the databasePopulationService to regenerate the recipe
-      const result = await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
+      await databasePopulationService.populateSingleRecipe(recipe.title, true);
       
-      if (result) {
-        toast({
-          title: "Success",
-          description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
-        });
-        
-        // Reload all recipes to show the updated data
-        await loadRecipes();
-        
-        // Clear the cached data for this recipe so it will be refetched
-        setRecipeIngredients(prev => {
-          const newState = {...prev};
-          delete newState[recipe.id];
-          return newState;
-        });
-        
-        setRecipeSteps(prev => {
-          const newState = {...prev};
-          delete newState[recipe.id];
-          return newState;
-        });
-        
-        // If this recipe was expanded, reload its details
-        if (expandedRecipe === recipe.id) {
-          loadRecipeDetails(recipe.id);
-        }
-      } else {
-        throw new Error("Failed to regenerate recipe data");
+      toast({
+        title: "Success",
+        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
+      });
+      
+      await loadRecipes();
+      
+      setRecipeIngredients(prev => {
+        const newState = {...prev};
+        delete newState[recipe.id];
+        return newState;
+      });
+      
+      setRecipeSteps(prev => {
+        const newState = {...prev};
+        delete newState[recipe.id];
+        return newState;
+      });
+      
+      if (expandedRecipe === recipe.id) {
+        loadRecipeDetails(recipe.id);
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
@@ -175,7 +163,6 @@ const AdminRecipesPage = () => {
         variant: "destructive"
       });
     } finally {
-      // Clear regenerating state
       setRegenerating(prev => ({ ...prev, [recipe.id]: false }));
     }
   };
@@ -185,7 +172,6 @@ const AdminRecipesPage = () => {
     setNewImageUrl(recipe.imageUrl);
     setImagePreview(recipe.imageUrl);
     setImageDialogOpen(true);
-    // Focus the input after dialog opens
     setTimeout(() => {
       if (imageUrlInputRef.current) {
         imageUrlInputRef.current.focus();
@@ -206,7 +192,6 @@ const AdminRecipesPage = () => {
     try {
       await updateRecipeImage(selectedRecipe.id, newImageUrl);
       
-      // Update the recipe in the local state
       const updatedRecipes = recipes.map(r => {
         if (r.id === selectedRecipe.id) {
           return { ...r, imageUrl: newImageUrl };
@@ -440,7 +425,6 @@ const AdminRecipesPage = () => {
         </CardContent>
       </Card>
 
-      {/* Image Update Dialog */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
