@@ -168,7 +168,29 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       const responseText = candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
       console.log("Raw AI response:", responseText);
       
-      return responseText;
+      // Extract JSON content
+      try {
+        // Check if the response contains valid JSON by looking for opening brace
+        if (responseText.includes('{')) {
+          const jsonStart = responseText.indexOf('{');
+          const jsonEnd = responseText.lastIndexOf('}') + 1;
+          
+          if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            const jsonString = responseText.substring(jsonStart, jsonEnd);
+            // Validate that it can be parsed as JSON before returning
+            JSON.parse(jsonString);
+            return jsonString;
+          }
+        }
+        
+        // If we couldn't extract valid JSON, return the original text
+        return responseText;
+      } catch (jsonError) {
+        console.error("Error parsing JSON from AI response:", jsonError);
+        console.log("Original response:", responseText);
+        // Return the original text if JSON parsing fails
+        return responseText;
+      }
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
       return "I'm sorry, I couldn't process your request at this time. Please try again later.";

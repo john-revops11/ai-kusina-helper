@@ -443,7 +443,7 @@ const AdminRecipesPage = () => {
     }
   };
 
-  const filteredAndSortedRecipes = (() => {
+  const getFilteredAndSortedRecipes = () => {
     let result = [...recipes];
     
     if (searchTerm) {
@@ -461,7 +461,9 @@ const AdminRecipesPage = () => {
     }
     
     return applySort(result);
-  })();
+  };
+  
+  const filteredAndSortedRecipes = getFilteredAndSortedRecipes();
 
   return (
     <div className="container mx-auto p-4 max-w-6xl pb-20 bg-gradient-to-br from-amber-50 to-orange-50">
