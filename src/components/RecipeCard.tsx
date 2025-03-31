@@ -27,17 +27,8 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
   return (
     <Link to={`/recipe/${recipe.id}`} className="recipe-card block transform hover:-translate-y-1 transition-all duration-300">
       <div className="relative overflow-hidden rounded-t-lg">
-        <div className="overflow-hidden" style={{ height: '12rem' }}>
-          <img 
-            src={recipe.imageUrl} 
-            alt={recipe.title} 
-            className="w-full h-48 object-cover transition-transform duration-500 hover:scale-110"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
-            }}
-          />
+        <div className="overflow-hidden bg-gray-200" style={{ height: '12rem' }}>
+          {/* Image removed */}
         </div>
         <Badge className={`absolute top-2 right-2 ${difficultyColor[recipe.difficulty]}`}>
           {recipe.difficulty}
