@@ -36,7 +36,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       console.error("Could not extract JSON from AI response");
       toast("The AI response format was invalid. Please try again.", {
         description: "Error processing recipe data",
-        variant: "destructive"
+        style: { backgroundColor: "red", color: "white" }
       });
       return null;
     }
@@ -99,7 +99,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       console.error('Error parsing recipe data:', error);
       toast("Failed to parse recipe data. Please try again.", {
         description: "The AI generated an invalid response format",
-        variant: "destructive"
+        style: { backgroundColor: "red", color: "white" }
       });
       return null;
     }
@@ -107,7 +107,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     console.error('Error searching recipe online:', error);
     toast("Failed to search for recipe online. Please try again.", {
         description: "Error connecting to AI service",
-        variant: "destructive"
+        style: { backgroundColor: "red", color: "white" }
     });
     return null;
   }
