@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { geminiService } from '@/services/geminiService';
+import { useToast } from '@/hooks/use-toast';
 
 type Message = {
   id: string;
@@ -17,16 +19,18 @@ const AIChatBox: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your AI cooking assistant. How can I help you with your Philippine cuisine recipe today?",
+      text: "Hello! I'm your AI cooking assistant for Philippine cuisine. How can I help you with your cooking today?",
       isUser: false,
       timestamp: new Date(),
     },
   ]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isLoading) return;
 
     const newUserMessage: Message = {
       id: Date.now().toString(),
@@ -37,22 +41,48 @@ const AIChatBox: React.FC = () => {
 
     setMessages((prev) => [...prev, newUserMessage]);
     setInputText('');
+    setIsLoading(true);
 
-    // Simulate AI response (in a real app, this would call an API)
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `I understand you want to know about "${inputText}". In Filipino cooking, this is a common question. Let me help you with that...`,
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
+    try {
+      // Get response from Gemini AI
+      const aiResponse = await geminiService.generateContent(inputText);
+      
+      // Add AI response to messages
+      setMessages((prev) => [
+        ...prev, 
+        {
+          id: (Date.now() + 1).toString(),
+          text: aiResponse,
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      toast({
+        title: "Error",
+        description: "Failed to get a response from the AI assistant",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // In a real app, this would handle voice recording functionality
+    if (isRecording) {
+      setIsRecording(false);
+      toast({
+        description: "Voice recording stopped",
+      });
+      // In a real app, this would process the voice recording
+    } else {
+      setIsRecording(true);
+      toast({
+        description: "Voice recording started. Speak clearly...",
+      });
+      // In a real app, this would start voice recording
+    }
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -64,7 +94,7 @@ const AIChatBox: React.FC = () => {
   return (
     <Card className="w-full h-[350px] flex flex-col">
       <CardHeader className="px-4 py-2 border-b">
-        <CardTitle className="text-base">AI Cooking Assistant</CardTitle>
+        <CardTitle className="text-base">Filipino Cuisine AI Assistant</CardTitle>
       </CardHeader>
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
@@ -87,6 +117,18 @@ const AIChatBox: React.FC = () => {
               </div>
             </div>
           ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="rounded-lg px-3 py-2 bg-muted max-w-[80%]">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
       <CardContent className="p-2 border-t">
@@ -100,13 +142,18 @@ const AIChatBox: React.FC = () => {
             <Mic size={18} />
           </Button>
           <Input
-            placeholder="Ask about ingredients, substitutions, or techniques..."
+            placeholder="Ask about ingredients, recipes, or techniques..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleInputKeyDown}
             className="flex-1"
+            disabled={isLoading}
           />
-          <Button size="icon" onClick={handleSendMessage} disabled={!inputText.trim()}>
+          <Button 
+            size="icon" 
+            onClick={handleSendMessage} 
+            disabled={!inputText.trim() || isLoading}
+          >
             <Send size={18} />
           </Button>
         </div>
