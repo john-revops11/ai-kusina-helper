@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -54,7 +55,8 @@ const RecipeDetail = () => {
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
   
-  const [timerRef, setTimerRef] = useState<number | null>(null);
+  // Change from useState to useRef for the timer
+  const timerRef = useRef<number | null>(null);
 
   const getFallbackImage = () => {
     const fallbackImages = [
@@ -130,11 +132,13 @@ const RecipeDetail = () => {
 
   useEffect(() => {
     if (timerRunning && remainingTime > 0) {
-      setTimerRef(window.setTimeout(() => {
+      // Store the timer ID in the ref
+      timerRef.current = window.setTimeout(() => {
         setRemainingTime(prev => prev - 1);
-      }, 1000));
+      }, 1000);
 
       return () => {
+        // Clean up using the ref
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
@@ -425,3 +429,4 @@ const RecipeDetail = () => {
 };
 
 export default RecipeDetail;
+
