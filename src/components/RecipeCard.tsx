@@ -31,7 +31,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
           <img 
             src={recipe.imageUrl} 
             alt={recipe.title} 
-            className="w-full h-48 object-cover transition-transform duration-500 hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
