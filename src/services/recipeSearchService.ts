@@ -23,14 +23,14 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     const recipeId = uuidv4();
     
     // Create the prompt for Gemini AI
-    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions.`;
+    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions. Only return the JSON object.`;
     
     // Call Gemini AI to get recipe information
     const aiResponse = await geminiService.generateContent(prompt);
     console.log("AI Response:", aiResponse);
     
     // Extract the JSON from the response (in case the AI included additional text)
-    let jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    let jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
     
     if (!jsonMatch) {
       console.error("Could not extract JSON from AI response");
@@ -43,6 +43,12 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     
     let jsonStr = jsonMatch[0];
     
+    // Attempt to clean the JSON string if needed
+    jsonStr = jsonStr.replace(/\\n/g, "")
+                      .replace(/\\"/g, '"')
+                      .replace(/\\t/g, "")
+                      .replace(/\\/g, "\\\\");
+    
     try {
       // Parse the JSON response
       const recipeData = JSON.parse(jsonStr);
@@ -50,6 +56,10 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       // Validate the structure of the response
       if (!recipeData.recipe || !recipeData.ingredients || !recipeData.steps) {
         throw new Error("Incomplete recipe data structure");
+      }
+      
+      if (!recipeData.recipe.title || !recipeData.recipe.category || !recipeData.recipe.difficulty) {
+        throw new Error("Missing required recipe fields");
       }
       
       if (recipeData.ingredients.length === 0 || recipeData.steps.length === 0) {
@@ -94,12 +104,19 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
           
         return {
           id: `step-${uuidv4()}`,
-          number: step.number,
+          number: step.number || index + 1, // Ensure we have a number even if missing
           instruction: step.instruction,
-          timeInMinutes: step.timeInMinutes,
+          timeInMinutes: typeof step.timeInMinutes === 'number' ? step.timeInMinutes : 5,
           isCritical: step.isCritical || false,
           imageUrl: stepImageUrl
         };
+      });
+      
+      // Log the created recipe for debugging
+      console.log("Successfully created recipe:", {
+        recipe,
+        ingredients,
+        steps
       });
       
       return {
@@ -109,6 +126,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       };
     } catch (error) {
       console.error('Error parsing recipe data:', error);
+      console.error('Problematic JSON string:', jsonStr);
       toast("Failed to parse recipe data. Please try again.", {
         description: "The AI generated an invalid response format",
         style: { backgroundColor: "red", color: "white" }

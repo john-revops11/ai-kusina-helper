@@ -104,7 +104,7 @@ export const geminiService = {
    - Never omit key ingredients or steps to simplify the recipe
    - Maintain proper technique and temperature guidance
 
-Never generate incomplete recipes. Always ensure your response contains the complete JSON structure with all required fields populated with accurate, detailed information.`
+EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your response contains the complete JSON structure with all required fields populated with accurate, detailed information. Do NOT include any explanatory text before or after the JSON - provide ONLY the JSON object.`
       }
     ]
   },
@@ -147,22 +147,28 @@ Never generate incomplete recipes. Always ensure your response contains the comp
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Gemini API error response:", errorData);
         throw new Error(`Gemini API error: ${JSON.stringify(errorData)}`);
       }
       
       const data = await response.json();
       
       if (!data.candidates || data.candidates.length === 0) {
+        console.error("No candidates in Gemini API response:", data);
         throw new Error("No candidates in Gemini API response");
       }
       
       const candidate = data.candidates[0];
       
       if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+        console.error("No content in Gemini API response candidate:", candidate);
         throw new Error("No content in Gemini API response candidate");
       }
       
-      return candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
+      const responseText = candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
+      console.log("Raw AI response:", responseText);
+      
+      return responseText;
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
       return "I'm sorry, I couldn't process your request at this time. Please try again later.";

@@ -885,4 +885,95 @@ const AdminRecipesPage = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-kusina
+              className="border-kusina-orange/20 text-kusina-orange"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRecipe}
+              className="bg-kusina-red text-white hover:bg-kusina-red/80"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={duplicateRemovalDialogOpen} onOpenChange={setDuplicateRemovalDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-kusina-orange">Remove Duplicate Recipes</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will scan your recipe database for duplicates and keep only the most recent version of each recipe. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-kusina-orange/20 text-kusina-orange"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveDuplicates}
+              className="bg-kusina-orange text-white hover:bg-kusina-orange/80"
+              disabled={isRemovingDuplicates}
+            >
+              {isRemovingDuplicates ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              Remove Duplicates
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBlkActionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={bulkAction === 'delete' ? 'text-kusina-red' : 'text-kusina-orange'}>
+              {bulkAction === 'delete' ? 'Delete Selected Recipes' : 'Regenerate Selected Recipes'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === 'delete' 
+                ? `This will delete ${selectedRecipes.length} selected recipe(s). This action cannot be undone.`
+                : `This will regenerate ${selectedRecipes.length} selected recipe(s) with enhanced accuracy.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-kusina-orange/20 text-kusina-orange"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeBulkAction}
+              className={bulkAction === 'delete' ? 'bg-kusina-red text-white hover:bg-kusina-red/80' : 'bg-kusina-orange text-white hover:bg-kusina-orange/80'}
+              disabled={isBulkProcessing}
+            >
+              {isBulkProcessing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : bulkAction === 'delete' ? (
+                <Trash2 className="mr-2 h-4 w-4" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {bulkAction === 'delete' ? 'Delete' : 'Regenerate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default AdminRecipesPage;
