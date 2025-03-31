@@ -85,7 +85,10 @@ const AdminPage = () => {
       
       // Then populate the selected number of recipes
       for (const recipe of recipesToPopulate) {
-        toast(`Populating recipe: ${recipe}...`);
+        toast({
+          title: 'Processing',
+          description: `Populating recipe: ${recipe}...`,
+        });
         await databasePopulationService.populateSingleRecipe(recipe);
       }
       
