@@ -16,6 +16,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { database, ref, set, remove } from '@/services/firebase';
 import { toast } from "sonner";
 import { databasePopulationService } from '@/services/databasePopulationService';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // Define the expected structure for imported data
 type ImportedRecipe = {
@@ -40,6 +42,8 @@ const AdminImportPage = () => {
     message: string;
     recipeCount?: number;
   } | null>(null);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [dupesFound, setDupesFound] = useState(0);
 
   // Handle file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +103,9 @@ const AdminImportPage = () => {
         return;
       }
       
+      // Check for potential duplicates
+      checkForDuplicates(parsedData);
+      
       // Success
       setValidationResult({
         isValid: true,
@@ -114,6 +121,27 @@ const AdminImportPage = () => {
     }
   };
 
+  // Check for potential duplicate recipes in the database
+  const checkForDuplicates = async (recipes: ImportedRecipe[]) => {
+    try {
+      let duplicateCount = 0;
+      for (const recipe of recipes) {
+        const exists = await databasePopulationService.recipeExists(recipe.recipeName);
+        if (exists) {
+          duplicateCount++;
+        }
+      }
+      
+      setDupesFound(duplicateCount);
+      
+      if (duplicateCount > 0) {
+        toast.info(`Found ${duplicateCount} recipe(s) that already exist in the database.`);
+      }
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+    }
+  };
+
   // Process validated data and import to Firebase
   const importRecipes = async () => {
     if (!jsonData || !validationResult?.isValid) {
@@ -126,10 +154,21 @@ const AdminImportPage = () => {
     try {
       const recipes = JSON.parse(jsonData) as ImportedRecipe[];
       let successCount = 0;
+      let skipCount = 0;
       let errorCount = 0;
       
       for (const recipe of recipes) {
         try {
+          // Check if recipe exists
+          const exists = await databasePopulationService.recipeExists(recipe.recipeName);
+          
+          if (exists && !overwriteExisting) {
+            // Skip this recipe if it exists and overwrite is off
+            toast.info(`Skipping "${recipe.recipeName}" as it already exists`);
+            skipCount++;
+            continue;
+          }
+          
           await importSingleRecipe(recipe);
           successCount++;
         } catch (error) {
@@ -138,7 +177,7 @@ const AdminImportPage = () => {
         }
       }
       
-      toast.success(`Import completed: ${successCount} recipes imported, ${errorCount} failed`);
+      toast.success(`Import completed: ${successCount} added, ${skipCount} skipped, ${errorCount} failed`);
     } catch (error) {
       console.error('Error during import:', error);
       toast.error('Failed to import recipes');
@@ -153,8 +192,12 @@ const AdminImportPage = () => {
     const existingRecipeId = await databasePopulationService.findExistingRecipeId(importedRecipe.recipeName);
     
     if (existingRecipeId) {
-      // Delete existing recipe if found
-      await databasePopulationService.deleteExistingRecipe(existingRecipeId);
+      if (overwriteExisting) {
+        // Delete existing recipe if found and overwrite is enabled
+        await databasePopulationService.deleteExistingRecipe(existingRecipeId);
+      } else {
+        throw new Error(`Recipe ${importedRecipe.recipeName} already exists`);
+      }
     }
     
     // Generate a new recipe ID
@@ -216,6 +259,7 @@ const AdminImportPage = () => {
       validateJsonData(data);
     } else {
       setValidationResult(null);
+      setDupesFound(0);
     }
   };
 
@@ -300,12 +344,34 @@ const AdminImportPage = () => {
           </div>
           
           {validationResult?.isValid && (
-            <Alert className="bg-muted">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Ready to import</AlertTitle>
-              <AlertDescription>
-                {validationResult.recipeCount} recipes are ready to be imported. This will 
-                replace any existing recipes with the same name.
+            <Alert className={`${dupesFound > 0 ? 'bg-amber-50 border-amber-200' : 'bg-muted'}`}>
+              {dupesFound > 0 ? (
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {dupesFound > 0 
+                  ? `Found ${dupesFound} duplicate recipe(s)` 
+                  : 'Ready to import'}
+              </AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>
+                  {dupesFound > 0 
+                    ? `${validationResult.recipeCount} recipes are ready to be imported, but ${dupesFound} already exist in your database.` 
+                    : `${validationResult.recipeCount} recipes are ready to be imported.`}
+                </p>
+                
+                <div className="flex items-center space-x-2 pt-1">
+                  <Switch 
+                    id="overwrite" 
+                    checked={overwriteExisting}
+                    onCheckedChange={setOverwriteExisting}
+                  />
+                  <Label htmlFor="overwrite" className="cursor-pointer">
+                    Overwrite existing recipes
+                  </Label>
+                </div>
               </AlertDescription>
             </Alert>
           )}
