@@ -33,7 +33,6 @@ import {
   fetchIngredientsByRecipeId,
   fetchRecipeSteps
 } from '@/services/recipeService';
-import { geminiService } from '@/services/geminiService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
 import { Ingredient } from '@/components/IngredientItem';
@@ -118,13 +117,13 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      // First delete the existing recipe data
-      // The population service will create a new entry with more accurate data
-      await databasePopulationService.populateSingleRecipe(recipe.title);
+      // Delete existing recipe data first to ensure clean regeneration
+      // Then populate with fresh AI-generated data
+      await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
       
       toast({
         title: "Success",
-        description: `"${recipe.title}" data has been regenerated with AI`,
+        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
       });
       
       // Reload all recipes to show the updated data
@@ -132,7 +131,21 @@ const AdminRecipesPage = () => {
       
       // If this recipe was expanded, reload its details
       if (expandedRecipe === recipe.id) {
-        setExpandedRecipe(null); // Close temporarily while reloading
+        // Remove from expanded state temporarily
+        setExpandedRecipe(null);
+        
+        // Clear the cached data for this recipe
+        setRecipeIngredients(prev => {
+          const newState = {...prev};
+          delete newState[recipe.id];
+          return newState;
+        });
+        
+        setRecipeSteps(prev => {
+          const newState = {...prev};
+          delete newState[recipe.id];
+          return newState;
+        });
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
@@ -290,19 +303,19 @@ const AdminRecipesPage = () => {
                                           {recipeSteps[recipe.id]
                                             .sort((a, b) => a.number - b.number)
                                             .map(step => (
-                                              <li key={step.id}>
-                                                <div className="flex flex-col gap-1">
-                                                  <p>{step.instruction}</p>
-                                                  <div className="flex gap-2 text-xs text-muted-foreground">
-                                                    <span>Time: {step.timeInMinutes} min</span>
-                                                    {step.isCritical && (
-                                                      <Badge variant="destructive" className="text-xs">
-                                                        Critical Step
-                                                      </Badge>
-                                                    )}
-                                                  </div>
+                                            <li key={step.id}>
+                                              <div className="flex flex-col gap-1">
+                                                <p>{step.instruction}</p>
+                                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                                  <span>Time: {step.timeInMinutes} min</span>
+                                                  {step.isCritical && (
+                                                    <Badge variant="destructive" className="text-xs">
+                                                      Critical Step
+                                                    </Badge>
+                                                  )}
                                                 </div>
-                                              </li>
+                                              </div>
+                                            </li>
                                           ))}
                                         </ol>
                                       )}

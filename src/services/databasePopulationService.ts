@@ -1,5 +1,5 @@
 
-import { database, ref, get, child, set } from './firebase';
+import { database, ref, get, child, set, remove } from './firebase';
 import { geminiService } from './geminiService';
 import { toast } from "sonner";
 
@@ -111,24 +111,64 @@ export const databasePopulationService = {
   },
   
   /**
-   * Checks if a recipe already exists in the database
+   * Checks if a recipe already exists in the database and returns the recipe ID if found
    */
-  async recipeExists(recipeName: string): Promise<boolean> {
+  async findExistingRecipeId(recipeName: string): Promise<string | null> {
     try {
       const dbRef = ref(database);
       const snapshot = await get(child(dbRef, 'recipes'));
       
       if (snapshot.exists()) {
         const recipes = snapshot.val();
-        return Object.values(recipes).some((recipe: any) => 
-          recipe.title.toLowerCase() === recipeName.toLowerCase()
-        );
+        for (const id in recipes) {
+          if (recipes[id].title.toLowerCase() === recipeName.toLowerCase()) {
+            return id;
+          }
+        }
       }
       
-      return false;
+      return null;
     } catch (error) {
       console.error(`Error checking if recipe exists: ${recipeName}`, error);
-      return false;
+      return null;
+    }
+  },
+  
+  /**
+   * Checks if a recipe already exists in the database
+   */
+  async recipeExists(recipeName: string): Promise<boolean> {
+    const recipeId = await this.findExistingRecipeId(recipeName);
+    return recipeId !== null;
+  },
+
+  /**
+   * Deletes an existing recipe and all its related data from the database
+   */
+  async deleteExistingRecipe(recipeId: string): Promise<void> {
+    try {
+      // Delete the recipe and all its related data
+      await remove(ref(database, `recipes/${recipeId}`));
+      await remove(ref(database, `ingredients/${recipeId}`));
+      await remove(ref(database, `steps/${recipeId}`));
+      
+      // Get ingredients with substitutions to delete their substitutes
+      const ingredientsRef = ref(database);
+      const ingredientsSnapshot = await get(child(ingredientsRef, `ingredients/${recipeId}`));
+      
+      if (ingredientsSnapshot.exists()) {
+        const ingredients = ingredientsSnapshot.val();
+        for (const id in ingredients) {
+          if (ingredients[id].hasSubstitutions) {
+            await remove(ref(database, `substitutes/${id}`));
+          }
+        }
+      }
+      
+      console.log(`Successfully deleted recipe with ID: ${recipeId}`);
+    } catch (error) {
+      console.error(`Error deleting recipe with ID: ${recipeId}`, error);
+      throw error;
     }
   },
   
@@ -147,26 +187,27 @@ export const databasePopulationService = {
   },
   
   /**
-   * Gets recipe data from Gemini AI
+   * Gets recipe data from Gemini AI with enhanced accuracy
    */
   async getRecipeDataFromGemini(recipeName: string): Promise<RecipePopulationData> {
     const prompt = `
-      Generate detailed information about the Filipino dish "${recipeName}".
+      Generate highly accurate detailed information about the authentic Filipino dish "${recipeName}".
       
       Please return a JSON object with the following structure:
       {
         "title": "${recipeName}",
-        "description": "A detailed description of the dish, including cultural context",
-        "category": "One of: ${this.recipeCategories.join(', ')}",
-        "prepTime": "Preparation time (e.g., '15 mins')",
-        "cookTime": "Cooking time (e.g., '30 mins')",
-        "difficulty": "One of: Easy, Medium, Hard",
-        "servings": "Number of servings as a number",
+        "description": "A detailed and culturally accurate description of the dish, including regional variations and cultural context",
+        "category": "One of: ${this.recipeCategories.join(', ')} - select the most accurate category",
+        "prepTime": "Realistic preparation time (e.g., '15 mins')",
+        "cookTime": "Realistic cooking time (e.g., '30 mins')",
+        "difficulty": "One of: Easy, Medium, Hard - based on complexity of preparation",
+        "servings": "Typical number of servings as a number",
         "imageUrl": "A working image URL for this dish (use https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')})",
-        "instructions": "Detailed cooking instructions"
+        "instructions": "Detailed authentic cooking instructions with traditional techniques"
       }
       
       Format it as valid JSON without explanation. Make sure the imageUrl is a valid, working URL.
+      Focus on accuracy and authenticity of Filipino cooking techniques and flavors.
     `;
     
     try {
@@ -237,24 +278,25 @@ export const databasePopulationService = {
   },
   
   /**
-   * Gets ingredient data from Gemini AI
+   * Gets ingredient data from Gemini AI with enhanced accuracy
    */
   async getIngredientsDataFromGemini(recipeName: string): Promise<IngredientPopulationData[]> {
     const prompt = `
-      Generate a list of ingredients for the Filipino dish "${recipeName}".
+      Generate a detailed and accurate list of ingredients for the authentic Filipino dish "${recipeName}".
       
       Please return a JSON array with the following structure:
       [
         {
-          "name": "Ingredient name",
-          "quantity": "Amount needed",
-          "unit": "Unit of measurement",
-          "hasSubstitutions": true or false
+          "name": "Ingredient name (use authentic Filipino ingredients)",
+          "quantity": "Precise amount needed",
+          "unit": "Appropriate unit of measurement",
+          "hasSubstitutions": true or false (set true for ingredients that might be hard to find outside Philippines)
         },
         ...more ingredients
       ]
       
-      Include 5-12 ingredients, depending on the complexity of the dish. Format it as valid JSON without explanation.
+      Include 8-15 ingredients, depending on the complexity of the dish. Be precise with measurements.
+      Format it as valid JSON without explanation. Focus on authentic Filipino ingredients.
     `;
     
     try {
@@ -331,24 +373,25 @@ export const databasePopulationService = {
   },
   
   /**
-   * Gets recipe steps data from Gemini AI
+   * Gets recipe steps data from Gemini AI with enhanced accuracy
    */
   async getRecipeStepsFromGemini(recipeName: string): Promise<RecipeStepPopulationData[]> {
     const prompt = `
-      Generate a list of cooking steps for the Filipino dish "${recipeName}".
+      Generate a detailed, step-by-step cooking process for the authentic Filipino dish "${recipeName}".
       
       Please return a JSON array with the following structure:
       [
         {
           "number": 1,
-          "instruction": "Detailed instruction for this step",
-          "timeInMinutes": Minutes needed for this step (as a number),
-          "isCritical": true or false (based on importance)
+          "instruction": "Detailed and precise instruction for this step, including traditional techniques",
+          "timeInMinutes": Realistic time needed for this step (as a number),
+          "isCritical": true or false (true for steps that are crucial for flavor development or proper cooking)
         },
         ...more steps
       ]
       
-      Include 5-10 steps, depending on the complexity of the dish. Format it as valid JSON without explanation.
+      Include 7-12 steps, depending on the complexity of the dish. Be detailed and specific.
+      Format it as valid JSON without explanation. Focus on traditional Filipino cooking methods.
     `;
     
     try {
@@ -417,13 +460,17 @@ export const databasePopulationService = {
   },
   
   /**
-   * Gets substitution data from Gemini AI
+   * Gets substitution data from Gemini AI with enhanced accuracy
    */
   async getSubstitutionsFromGemini(ingredientName: string): Promise<string[]> {
     const prompt = `
-      Suggest 2-3 substitutes for the ingredient "${ingredientName}" that could be used in Filipino cooking.
+      Suggest 2-3 highly accurate substitutes for the ingredient "${ingredientName}" that could be used in Filipino cooking.
       
-      Please return a JSON array of strings with the substitutes.
+      Please return a JSON array of strings with the substitutes, considering:
+      - Flavor profile match
+      - Texture similarity 
+      - Cultural appropriateness
+      - Availability outside the Philippines
       
       Format it as valid JSON without explanation.
     `;
@@ -452,15 +499,24 @@ export const databasePopulationService = {
   
   /**
    * Populates a single recipe in the database
+   * @param recipeName The name of the recipe to populate
+   * @param forceRegenerate If true, will delete the existing recipe if found and regenerate it
    */
-  async populateSingleRecipe(recipeName: string): Promise<void> {
+  async populateSingleRecipe(recipeName: string, forceRegenerate: boolean = false): Promise<void> {
     try {
       // Check if recipe already exists
-      const exists = await this.recipeExists(recipeName);
-      if (exists) {
-        console.log(`Recipe ${recipeName} already exists in database, skipping`);
-        toast.info(`Recipe "${recipeName}" already exists in database`);
-        return;
+      const existingRecipeId = await this.findExistingRecipeId(recipeName);
+      
+      if (existingRecipeId) {
+        if (forceRegenerate) {
+          console.log(`Recipe ${recipeName} exists but will be regenerated as requested`);
+          // Delete the existing recipe
+          await this.deleteExistingRecipe(existingRecipeId);
+        } else {
+          console.log(`Recipe ${recipeName} already exists in database, skipping`);
+          toast.info(`Recipe "${recipeName}" already exists in database`);
+          return;
+        }
       }
       
       // 1. Get recipe data
@@ -493,7 +549,11 @@ export const databasePopulationService = {
         }
       }
       
-      toast.success(`Recipe "${recipeName}" populated successfully`);
+      if (forceRegenerate) {
+        toast.success(`Recipe "${recipeName}" regenerated with enhanced accuracy`);
+      } else {
+        toast.success(`Recipe "${recipeName}" populated successfully`);
+      }
     } catch (error) {
       console.error(`Error populating recipe ${recipeName}:`, error);
       toast.error(`Failed to populate recipe "${recipeName}"`);
