@@ -23,6 +23,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const user = await getCurrentUser();
         setCurrentUser(user);
+        if (user) {
+          console.log("User loaded:", user.email, "Role:", user.role);
+        }
       } catch (error) {
         console.error("Failed to load user:", error);
       } finally {
@@ -39,11 +42,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await loginUser(email, password);
       const user = await getCurrentUser();
       setCurrentUser(user);
+      console.log("Login successful for:", email, "Role:", user?.role);
       toast.success("You have been logged in successfully.");
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Invalid email or password.");
-      throw error;
+      throw error; // Rethrow to handle in the component
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       await logoutUser();
       setCurrentUser(null);
+      console.log("User logged out successfully");
       toast.success("You have been logged out successfully.");
     } catch (error) {
       console.error("Logout error:", error);
@@ -70,11 +74,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await registerUser(email, password);
       const user = await getCurrentUser();
       setCurrentUser(user);
+      console.log("Registration successful for:", email);
       toast.success("Account created successfully.");
     } catch (error) {
       console.error("Registration error:", error);
-      toast.error("Could not create account.");
-      throw error;
+      throw error; // Rethrow to handle in the component
     } finally {
       setIsLoading(false);
     }

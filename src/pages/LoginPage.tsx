@@ -27,6 +27,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isLoggingInAsUser, setIsLoggingInAsUser] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -38,23 +39,42 @@ const LoginPage = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
+      setErrorMessage(null);
       await login(values.email, values.password);
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
-      toast.error("Login failed. Please check your credentials and try again.");
+      
+      // Handle different error codes
+      if (error?.code === 'auth/user-not-found' || error?.code === 'auth/wrong-password') {
+        setErrorMessage("Invalid email or password. Please try again.");
+      } else if (error?.code === 'auth/too-many-requests') {
+        setErrorMessage("Too many failed login attempts. Please try again later.");
+      } else if (error?.code?.includes('api-key-not-valid')) {
+        setErrorMessage("Authentication service is temporarily unavailable. Please try again later.");
+      } else {
+        setErrorMessage("Login failed. Please check your credentials and try again.");
+      }
+      
+      toast.error(errorMessage || "Login failed. Please try again.");
     }
   };
 
   const handleLoginAsUser = async () => {
     try {
       setIsLoggingInAsUser(true);
+      setErrorMessage(null);
       await login("user@example.com", "password123");
       toast.success("Logged in as demo user");
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Demo login failed:", error);
-      toast.error("Demo login failed. Please initialize users first.");
+      if (error?.code?.includes('api-key-not-valid')) {
+        setErrorMessage("Authentication service is temporarily unavailable. Please try again later.");
+      } else {
+        setErrorMessage("Demo login failed. Please initialize users first.");
+      }
+      toast.error(errorMessage || "Demo login failed. Please try again.");
     } finally {
       setIsLoggingInAsUser(false);
     }
@@ -63,11 +83,17 @@ const LoginPage = () => {
   const handleInitializeUsers = async () => {
     try {
       setIsInitializing(true);
+      setErrorMessage(null);
       await initializeUsers();
       toast.success("Users initialized! You can now use the demo login buttons.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to initialize users:", error);
-      toast.error("Error initializing users. Please try again.");
+      if (error?.code?.includes('api-key-not-valid')) {
+        setErrorMessage("Authentication service is temporarily unavailable. Please try again later.");
+      } else {
+        setErrorMessage("Error initializing users. Please try again.");
+      }
+      toast.error(errorMessage || "Error initializing users. Please try again.");
     } finally {
       setIsInitializing(false);
     }
@@ -88,6 +114,12 @@ const LoginPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              {errorMessage}
+            </div>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
