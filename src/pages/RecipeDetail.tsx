@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -55,8 +54,18 @@ const RecipeDetail = () => {
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
   
-  // Timer reference for cleanup
-  const timerRef = useRef<number | null>(null);
+  const [timerRef, setTimerRef] = useState<number | null>(null);
+
+  const getFallbackImage = () => {
+    const fallbackImages = [
+      "https://images.unsplash.com/photo-1556040220-4096d522378d?q=80&w=1887&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070",
+      "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=2070",
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=2072"
+    ];
+    
+    return fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+  };
 
   useEffect(() => {
     const loadRecipeData = async () => {
@@ -119,12 +128,11 @@ const RecipeDetail = () => {
     }
   }, [recipe]);
 
-  // Timer effect to count down
   useEffect(() => {
     if (timerRunning && remainingTime > 0) {
-      timerRef.current = window.setTimeout(() => {
+      setTimerRef(window.setTimeout(() => {
         setRemainingTime(prev => prev - 1);
-      }, 1000);
+      }, 1000));
 
       return () => {
         if (timerRef.current) {
@@ -132,7 +140,6 @@ const RecipeDetail = () => {
         }
       };
     } else if (timerRunning && remainingTime === 0) {
-      // Timer finished
       setTimerRunning(false);
       toast({
         title: "Timer Complete",
@@ -158,7 +165,6 @@ const RecipeDetail = () => {
   const startTimer = () => {
     if (steps[activeStep]) {
       if (remainingTime === 0) {
-        // If timer is at 0, reset it first
         setRemainingTime(steps[activeStep].timeInMinutes * 60);
       }
       setTimerRunning(true);
@@ -182,14 +188,12 @@ const RecipeDetail = () => {
       [id]: true
     }));
     
-    // Stop the timer if it's running
     if (timerRunning) {
       stopTimer();
     }
     
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
-      // Reset timer for the next step
       if (steps[activeStep + 1]?.timeInMinutes) {
         setRemainingTime(steps[activeStep + 1].timeInMinutes * 60);
       }
@@ -197,7 +201,6 @@ const RecipeDetail = () => {
   };
 
   const restartCooking = () => {
-    // Reset all states to initial values
     setActiveStep(0);
     setCompletedSteps({});
     setTimerRunning(false);
@@ -256,7 +259,7 @@ const RecipeDetail = () => {
           loading="eager"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
+            target.src = getFallbackImage();
           }}
         />
         <Link 

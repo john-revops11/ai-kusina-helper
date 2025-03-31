@@ -46,6 +46,20 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Reliable food image fallbacks from Unsplash
+  const getFallbackImage = () => {
+    const fallbackImages = [
+      "https://images.unsplash.com/photo-1556040220-4096d522378d?q=80&w=1887&auto=format&fit=crop",  // Filipino food 1
+      "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070",  // Filipino food 2
+      "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=2070",  // Filipino food 3
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=2072", // Food cooking
+      "https://images.unsplash.com/photo-1518739745383-0ef26e9dd7fd?q=80&w=1886" // Food preparation
+    ];
+    
+    // Use step number to determine which fallback to use (cycling through options)
+    return fallbackImages[step.number % fallbackImages.length];
+  };
+
   return (
     <Card className={`mb-4 transition-all duration-300 ${isActive ? 'ring-2 ring-primary' : ''} ${isCompleted ? 'opacity-60' : ''}`}>
       <CardContent className="p-4">
@@ -79,7 +93,7 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
+                target.src = getFallbackImage();
               }}
             />
           </div>

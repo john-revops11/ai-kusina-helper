@@ -56,11 +56,15 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         throw new Error("Missing ingredients or steps");
       }
       
+      // Generate a reliable image URL from Unsplash for the recipe
+      const cleanRecipeName = recipeName.replace(/\s+/g, ',');
+      const imageUrl = `https://source.unsplash.com/featured/?filipino,food,${cleanRecipeName}`;
+      
       // Format the response to match our expected structure
       const recipe = {
         id: recipeId,
         title: recipeData.recipe.title,
-        imageUrl: `https://source.unsplash.com/800x600/?filipino,${recipeName.replace(/\s/g, ',')}`,
+        imageUrl: imageUrl,
         prepTime: recipeData.recipe.prepTime,
         category: recipeData.recipe.category,
         difficulty: recipeData.recipe.difficulty,
@@ -81,14 +85,22 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         hasSubstitutions: ing.hasSubstitutions || false
       }));
       
-      // Format steps
-      const steps = recipeData.steps.map((step: any) => ({
-        id: `step-${uuidv4()}`,
-        number: step.number,
-        instruction: step.instruction,
-        timeInMinutes: step.timeInMinutes,
-        isCritical: step.isCritical || false
-      }));
+      // Format steps with reliable image URLs
+      const steps = recipeData.steps.map((step: any, index: number) => {
+        // Add step images for key steps (every other step)
+        const stepImageUrl = index % 2 === 0 ? 
+          `https://source.unsplash.com/featured/?cooking,${step.instruction.split(' ').slice(0, 2).join(',')}` : 
+          undefined;
+          
+        return {
+          id: `step-${uuidv4()}`,
+          number: step.number,
+          instruction: step.instruction,
+          timeInMinutes: step.timeInMinutes,
+          isCritical: step.isCritical || false,
+          imageUrl: stepImageUrl
+        };
+      });
       
       return {
         recipe,
