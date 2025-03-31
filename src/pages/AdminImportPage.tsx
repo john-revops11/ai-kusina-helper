@@ -8,7 +8,9 @@ import {
   AlertCircle,
   Check,
   RefreshCw,
-  Plus
+  Plus,
+  Trash2,
+  FileWarning
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,6 +51,8 @@ const AdminImportPage = () => {
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [dupesFound, setDupesFound] = useState(0);
   const [importMode, setImportMode] = useState<ImportMode>('update');
+  const [duplicateRecipes, setDuplicateRecipes] = useState<string[]>([]);
+  const [isDeduplicating, setIsDeduplicating] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -120,20 +124,64 @@ const AdminImportPage = () => {
   const checkForDuplicates = async (recipes: ImportedRecipe[]) => {
     try {
       let duplicateCount = 0;
+      const duplicateNames: string[] = [];
+      
       for (const recipe of recipes) {
         const exists = await databasePopulationService.recipeExists(recipe.recipeName);
         if (exists) {
           duplicateCount++;
+          duplicateNames.push(recipe.recipeName);
         }
       }
       
       setDupesFound(duplicateCount);
+      setDuplicateRecipes(duplicateNames);
       
       if (duplicateCount > 0) {
         toast.info(`Found ${duplicateCount} recipe(s) that already exist in the database.`);
       }
     } catch (error) {
       console.error('Error checking for duplicates:', error);
+    }
+  };
+
+  const deduplicateRecipes = () => {
+    if (!jsonData || !validationResult?.isValid) {
+      toast.error('Please provide valid JSON data first');
+      return;
+    }
+    
+    setIsDeduplicating(true);
+    
+    try {
+      const recipes = JSON.parse(jsonData) as ImportedRecipe[];
+      
+      const uniqueRecipes = recipes.filter(recipe => !duplicateRecipes.includes(recipe.recipeName));
+      
+      if (uniqueRecipes.length === recipes.length) {
+        toast.info('No duplicates to remove');
+        setIsDeduplicating(false);
+        return;
+      }
+      
+      const newJsonData = JSON.stringify(uniqueRecipes, null, 2);
+      setJsonData(newJsonData);
+      
+      setValidationResult({
+        isValid: true,
+        message: 'Data validation successful',
+        recipeCount: uniqueRecipes.length
+      });
+      
+      setDupesFound(0);
+      setDuplicateRecipes([]);
+      
+      toast.success(`Removed ${recipes.length - uniqueRecipes.length} duplicate recipes`);
+    } catch (error) {
+      console.error('Error deduplicating recipes:', error);
+      toast.error('Failed to deduplicate recipes');
+    } finally {
+      setIsDeduplicating(false);
     }
   };
 
@@ -160,10 +208,12 @@ const AdminImportPage = () => {
           if (exists && existingRecipeId) {
             if (importMode === 'update') {
               await importSingleRecipe(recipe, existingRecipeId);
+              console.log(`Updated recipe: ${recipe.recipeName} with ID: ${existingRecipeId}`);
               toast.info(`Updated "${recipe.recipeName}"`);
               updateCount++;
             } else if (importMode === 'create-new') {
               const newId = await importSingleRecipe(recipe);
+              console.log(`Created new instance of recipe: ${recipe.recipeName} with new ID: ${newId}`);
               toast.success(`Added "${recipe.recipeName}" as a new entry`);
               successCount++;
             } else if (!overwriteExisting) {
@@ -172,7 +222,8 @@ const AdminImportPage = () => {
               continue;
             }
           } else {
-            await importSingleRecipe(recipe);
+            const newId = await importSingleRecipe(recipe);
+            console.log(`Added new recipe: ${recipe.recipeName} with ID: ${newId}`);
             toast.success(`Added new recipe: "${recipe.recipeName}"`);
             successCount++;
           }
@@ -254,6 +305,7 @@ const AdminImportPage = () => {
     } else {
       setValidationResult(null);
       setDupesFound(0);
+      setDuplicateRecipes([]);
     }
   };
 
@@ -387,6 +439,42 @@ const AdminImportPage = () => {
                         : `${validationResult.recipeCount} recipes are ready to be imported as new entries, even though ${dupesFound} already exist with the same name.`
                       : `${validationResult.recipeCount} recipes are ready to be imported.`}
                   </p>
+                  
+                  {dupesFound > 0 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-2 bg-white" 
+                      onClick={deduplicateRecipes}
+                      disabled={isDeduplicating}
+                    >
+                      {isDeduplicating ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          Removing duplicates...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          Remove duplicate recipes from import
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  
+                  {duplicateRecipes.length > 0 && (
+                    <div className="mt-2 text-xs text-amber-700">
+                      <div className="flex items-center gap-1 font-medium">
+                        <FileWarning size={12} />
+                        <span>Duplicate recipes:</span>
+                      </div>
+                      <ul className="mt-1 space-y-1 pl-4 list-disc">
+                        {duplicateRecipes.map((recipe, index) => (
+                          <li key={index}>{recipe}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </AlertDescription>
               </Alert>
             </>
