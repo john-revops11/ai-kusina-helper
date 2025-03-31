@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Database, Loader2, Utensils, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Database, Loader2, Utensils, AlertCircle, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -162,7 +162,7 @@ const AdminPage = () => {
         <span>Back to home</span>
       </Link>
       
-      <Card>
+      <Card className="mb-4">
         <CardHeader>
           <CardTitle>Database Administration</CardTitle>
           <CardDescription>
@@ -242,6 +242,16 @@ const AdminPage = () => {
               Add Single Recipe
             </Button>
           </div>
+          
+          <Link to="/admin/recipes">
+            <Button 
+              className="w-full" 
+              variant="secondary" 
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Manage Recipes
+            </Button>
+          </Link>
         </CardContent>
         
         <CardFooter>
