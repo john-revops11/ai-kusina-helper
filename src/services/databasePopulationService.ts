@@ -42,31 +42,60 @@ export const databasePopulationService = {
    * The list of Philippine recipes to populate
    */
   philippineRecipes: [
+    // Breakfast
+    'Tapsilog',
+    'Longsilog',
+    'Tocilog',
+    'Pandesal with Kesong Puti',
+    'Champorado',
+    
+    // Lunch/Dinner
     'Adobo',
     'Sinigang',
     'Kare-Kare',
-    'Lechon',
-    'Pancit Canton',
-    'Lumpia',
-    'Bibingka',
-    'Halo-Halo',
+    'Lechon Kawali',
     'Pinakbet',
-    'Tinola'
+    'Bulalo',
+    'Crispy Pata',
+    'Laing',
+    'Pancit Palabok',
+    'Chicken Inasal',
+    'Ginataang Gulay',
+    'Dinuguan',
+    
+    // Desserts
+    'Halo-Halo',
+    'Leche Flan',
+    'Biko',
+    'Turon',
+    'Ginataang Bilo-Bilo',
+    'Suman',
+    'Ube Halaya',
+    'Puto Bumbong',
+    'Bibingka',
+    
+    // Snacks/Merienda
+    'Ukoy',
+    'Banana Cue',
+    'Maruya',
+    'Lumpia Shanghai'
   ],
   
   /**
    * The list of recipe categories
    */
   recipeCategories: [
+    'Breakfast',
+    'Lunch/Dinner',
+    'Dessert',
+    'Snack/Merienda',
     'Main Dish',
     'Soup',
     'Appetizer',
-    'Dessert',
-    'Snack',
-    'Breakfast',
     'Vegetable Dish',
     'Seafood',
     'Meat Dish',
+    'Rice Dish',
     'Noodles'
   ],
   
@@ -108,11 +137,11 @@ export const databasePopulationService = {
         "cookTime": "Cooking time (e.g., '30 mins')",
         "difficulty": "One of: Easy, Medium, Hard",
         "servings": "Number of servings as a number",
-        "imageUrl": "A placeholder URL (use https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase()})",
+        "imageUrl": "A working image URL for this dish (use https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')})",
         "instructions": "Detailed cooking instructions"
       }
       
-      Format it as valid JSON without explanation.
+      Format it as valid JSON without explanation. Make sure the imageUrl is a valid, working URL.
     `;
     
     try {
@@ -126,6 +155,11 @@ export const databasePopulationService = {
       
       const recipeData = JSON.parse(jsonMatch[0]) as RecipePopulationData;
       recipeData.id = this.generateId();
+      
+      // Ensure the image URL is valid by replacing spaces and using a default pattern
+      if (!recipeData.imageUrl || recipeData.imageUrl.includes('INSERT_IMAGE_URL')) {
+        recipeData.imageUrl = `https://source.unsplash.com/random/?philippine,${recipeName.toLowerCase().replace(/ /g, ',')}`;
+      }
       
       return recipeData;
     } catch (error) {
@@ -153,7 +187,7 @@ export const databasePopulationService = {
         ...more ingredients
       ]
       
-      Include 5-10 ingredients. Format it as valid JSON without explanation.
+      Include 5-12 ingredients, depending on the complexity of the dish. Format it as valid JSON without explanation.
     `;
     
     try {
@@ -197,7 +231,7 @@ export const databasePopulationService = {
         ...more steps
       ]
       
-      Include 5-8 steps. Format it as valid JSON without explanation.
+      Include 5-10 steps, depending on the complexity of the dish. Format it as valid JSON without explanation.
     `;
     
     try {
