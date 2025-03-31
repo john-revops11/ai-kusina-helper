@@ -25,6 +25,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setCurrentUser(user);
         if (user) {
           console.log("User loaded:", user.email, "Role:", user.role);
+        } else {
+          console.log("No authenticated user found");
         }
       } catch (error) {
         console.error("Failed to load user:", error);
@@ -39,13 +41,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log(`Attempting to login with email: ${email}`);
       await loginUser(email, password);
       const user = await getCurrentUser();
       setCurrentUser(user);
       console.log("Login successful for:", email, "Role:", user?.role);
       toast.success("You have been logged in successfully.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      const errorMessage = error?.code === 'auth/user-not-found' || error?.code === 'auth/wrong-password'
+        ? "Invalid email or password"
+        : "Login failed. Please try again.";
+      toast.error(errorMessage);
       throw error; // Rethrow to handle in the component
     } finally {
       setIsLoading(false);
