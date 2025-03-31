@@ -135,24 +135,19 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      // Delete existing recipe data first to ensure clean regeneration
-      // Then populate with fresh AI-generated data
-      await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
+      // Use the databasePopulationService to regenerate the recipe
+      const result = await databasePopulationService.populateSingleRecipe(recipe.title, true); // Pass true to force regeneration
       
-      toast({
-        title: "Success",
-        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
-      });
-      
-      // Reload all recipes to show the updated data
-      await loadRecipes();
-      
-      // If this recipe was expanded, reload its details
-      if (expandedRecipe === recipe.id) {
-        // Remove from expanded state temporarily
-        setExpandedRecipe(null);
+      if (result) {
+        toast({
+          title: "Success",
+          description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
+        });
         
-        // Clear the cached data for this recipe
+        // Reload all recipes to show the updated data
+        await loadRecipes();
+        
+        // Clear the cached data for this recipe so it will be refetched
         setRecipeIngredients(prev => {
           const newState = {...prev};
           delete newState[recipe.id];
@@ -164,6 +159,13 @@ const AdminRecipesPage = () => {
           delete newState[recipe.id];
           return newState;
         });
+        
+        // If this recipe was expanded, reload its details
+        if (expandedRecipe === recipe.id) {
+          loadRecipeDetails(recipe.id);
+        }
+      } else {
+        throw new Error("Failed to regenerate recipe data");
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
