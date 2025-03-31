@@ -68,7 +68,9 @@ const RecipeDetail = () => {
           
           // Fetch recipe steps
           const stepsData = await fetchRecipeSteps(id);
-          setSteps(stepsData);
+          // Sort steps by number to ensure correct order
+          const sortedSteps = stepsData.sort((a, b) => a.number - b.number);
+          setSteps(sortedSteps);
           
           // Fetch substitutes for ingredients that have them
           const substitutesPromises = ingredientsData
@@ -185,9 +187,13 @@ const RecipeDetail = () => {
       {/* Header */}
       <div className="relative h-60">
         <img 
-          src={recipe.imageUrl} 
-          alt={recipe.title} 
+          src={recipe?.imageUrl} 
+          alt={recipe?.title} 
           className="w-full h-full object-cover brightness-50"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
+          }}
         />
         <Link 
           to="/" 
@@ -196,16 +202,16 @@ const RecipeDetail = () => {
           <ArrowLeft className="text-white" size={20} />
         </Link>
         <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-          <Badge className="mb-2">{recipe.category}</Badge>
-          <h1 className="text-2xl font-bold mb-1">{recipe.title}</h1>
+          <Badge className="mb-2">{recipe?.category}</Badge>
+          <h1 className="text-2xl font-bold mb-1">{recipe?.title}</h1>
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1">
               <Clock size={14} />
-              <span>{recipe.prepTime}</span>
+              <span>{recipe?.prepTime}</span>
             </div>
             <div className="flex items-center gap-1">
               <Utensils size={14} />
-              <span>Difficulty: {recipe.difficulty}</span>
+              <span>Difficulty: {recipe?.difficulty}</span>
             </div>
           </div>
         </div>
@@ -276,19 +282,21 @@ const RecipeDetail = () => {
           </div>
 
           <div className="space-y-4">
-            {steps.map((step, index) => (
-              <RecipeStepCard
-                key={step.id}
-                step={step}
-                isActive={index === activeStep}
-                isCompleted={!!completedSteps[step.id]}
-                onStartTimer={startTimer}
-                onStopTimer={stopTimer}
-                timerRunning={timerRunning && index === activeStep}
-                remainingTime={remainingTime}
-                onToggleVoice={toggleVoice}
-                voiceEnabled={voiceEnabled}
-              />
+            {steps
+              .sort((a, b) => a.number - b.number) // Ensure steps are ordered by number
+              .map((step, index) => (
+                <RecipeStepCard
+                  key={step.id}
+                  step={step}
+                  isActive={index === activeStep}
+                  isCompleted={!!completedSteps[step.id]}
+                  onStartTimer={startTimer}
+                  onStopTimer={stopTimer}
+                  timerRunning={timerRunning && index === activeStep}
+                  remainingTime={remainingTime}
+                  onToggleVoice={toggleVoice}
+                  voiceEnabled={voiceEnabled}
+                />
             ))}
           </div>
           
@@ -318,7 +326,7 @@ const RecipeDetail = () => {
             aiAssistantOpen ? 'translate-y-0' : 'translate-y-full'
           }`}
         >
-          <AIChatBox recipeContext={recipe.title} />
+          <AIChatBox recipeContext={recipe?.title} />
         </div>
       </div>
 

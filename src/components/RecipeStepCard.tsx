@@ -70,7 +70,15 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
 
         {step.imageUrl && (
           <div className="mb-3">
-            <img src={step.imageUrl} alt={`Step ${step.number}`} className="rounded-md w-full h-36 object-cover" />
+            <img 
+              src={step.imageUrl} 
+              alt={`Step ${step.number}`} 
+              className="rounded-md w-full h-36 object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
+              }}
+            />
           </div>
         )}
 

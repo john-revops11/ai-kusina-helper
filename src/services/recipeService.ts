@@ -1,8 +1,8 @@
 
 import { database, ref, get, child, update } from './firebase';
-import { Recipe } from '@/components/RecipeCard';
-import { RecipeStep } from '@/components/RecipeStepCard';
-import { Ingredient } from '@/components/IngredientItem';
+import type { Recipe } from '@/components/RecipeCard';
+import type { RecipeStep } from '@/components/RecipeStepCard';
+import type { Ingredient } from '@/components/IngredientItem';
 
 // Types
 export type RecipeDetail = Recipe & {
