@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Database, Loader2, Utensils, AlertCircle, BookOpen } from 'lucide-react';
+import { ChevronLeft, Database, Loader2, Utensils, AlertCircle, BookOpen, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -16,7 +15,6 @@ const AdminPage = () => {
   const [populatedCount, setPopulatedCount] = useState(0);
   const [populationStatus, setPopulationStatus] = useState('');
 
-  // Reset progress when not populating
   useEffect(() => {
     if (!isPopulating) {
       setPopulationProgress(0);
@@ -39,7 +37,6 @@ const AdminPage = () => {
     setPopulationStatus('Initializing...');
     
     try {
-      // Track progress through a callback
       await databasePopulationService.populateAllRecipes((current, total, recipe) => {
         const progress = Math.round((current / total) * 100);
         setPopulationProgress(progress);
@@ -107,10 +104,8 @@ const AdminPage = () => {
     setPopulationStatus('Initializing categories...');
     
     try {
-      // First populate categories
       await databasePopulationService.populateCategories();
       
-      // Then populate the selected number of recipes with progress tracking
       let populatedRecipes = 0;
       for (const recipe of recipesToPopulate) {
         setPopulationStatus(`Populating ${recipe}...`);
@@ -132,7 +127,7 @@ const AdminPage = () => {
             description: `Skipped recipe "${recipe}" due to an error`,
             variant: 'destructive'
           });
-          // Continue with next recipe even if this one fails
+          continue;
         }
       }
       
@@ -243,15 +238,27 @@ const AdminPage = () => {
             </Button>
           </div>
           
-          <Link to="/admin/recipes">
-            <Button 
-              className="w-full" 
-              variant="secondary" 
-            >
-              <BookOpen className="mr-2 h-4 w-4" />
-              Manage Recipes
-            </Button>
-          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/admin/recipes">
+              <Button 
+                className="w-full" 
+                variant="secondary" 
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Manage Recipes
+              </Button>
+            </Link>
+            
+            <Link to="/admin/import">
+              <Button 
+                className="w-full" 
+                variant="secondary" 
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Import Data
+              </Button>
+            </Link>
+          </div>
         </CardContent>
         
         <CardFooter>

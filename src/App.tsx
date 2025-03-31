@@ -10,6 +10,7 @@ import ProfilePage from "./pages/ProfilePage";
 import ShoppingListPage from "./pages/ShoppingListPage";
 import AdminPage from "./pages/AdminPage";
 import AdminRecipesPage from "./pages/AdminRecipesPage";
+import AdminImportPage from "./pages/AdminImportPage";
 import NotFound from "./pages/NotFound";
 
 import "./App.css";
@@ -27,6 +28,7 @@ function App() {
         <Route path="/shopping-list" element={<ShoppingListPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/recipes" element={<AdminRecipesPage />} />
+        <Route path="/admin/import" element={<AdminImportPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
