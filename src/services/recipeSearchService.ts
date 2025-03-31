@@ -18,24 +18,33 @@ const validateRecipeData = (recipeData: any): boolean => {
   if (!recipeData) return false;
   
   // Check for recipe object with required fields
-  if (!recipeData.recipe || 
-      !recipeData.recipe.title || 
-      !recipeData.recipe.category || 
-      !recipeData.recipe.difficulty) {
-    return false;
+  if (recipeData.recipe && 
+      recipeData.recipe.title && 
+      recipeData.ingredients && 
+      recipeData.steps) {
+    // Traditional format is valid
+    return true;
   }
   
-  // Check for ingredients array
-  if (!Array.isArray(recipeData.ingredients) || recipeData.ingredients.length === 0) {
-    return false;
+  // Check for new format (array of recipes with recipeName)
+  if (Array.isArray(recipeData) && recipeData.length > 0) {
+    const firstRecipe = recipeData[0];
+    if (firstRecipe.recipeName && 
+        firstRecipe.ingredients && 
+        firstRecipe.steps) {
+      return true;
+    }
   }
   
-  // Check for steps array
-  if (!Array.isArray(recipeData.steps) || recipeData.steps.length === 0) {
-    return false;
+  // Check if this is a single recipe in the new format (not in an array)
+  if (recipeData.recipeName && 
+      recipeData.ingredients && 
+      recipeData.steps) {
+    return true;
   }
   
-  return true;
+  // No valid format found
+  return false;
 };
 
 // Use AI to search for recipes online
@@ -54,7 +63,27 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     const recipeId = uuidv4();
     
     // Create the prompt for AI - ensure we're asking for JSON
-    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions. Only return the JSON object.`;
+    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}". Return the result as a JSON array of recipe objects with the following format:
+[
+  {
+    "recipeName": "Full Recipe Name",
+    "description": "Detailed description with cultural context",
+    "culture": "Filipino",
+    "category": "Appropriate category (Main Dish, Dessert, etc.)",
+    "imageUrl": "URL placeholder", 
+    "ingredients": [
+      {
+        "ingredientName": "Name of ingredient",
+        "quantity": "Amount",
+        "unit": "Unit of measurement"
+      }
+    ],
+    "steps": [
+      "Step 1 instruction",
+      "Step 2 instruction"
+    ]
+  }
+]`;
     
     // Get the current AI provider
     const currentProvider = aiProviderService.getCurrentProvider();
@@ -117,7 +146,27 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     // Try to clean and parse the response
     try {
       // Parse the JSON response - this might throw if JSON is invalid
-      const recipeData = JSON.parse(aiResponse);
+      let recipeData;
+      try {
+        recipeData = JSON.parse(aiResponse);
+      } catch (parseError) {
+        console.error("Error parsing initial JSON response:", parseError);
+        
+        // Try extracting JSON from the response
+        if (aiResponse.includes('{') && aiResponse.includes('}')) {
+          const jsonStart = aiResponse.indexOf('{');
+          const jsonEnd = aiResponse.lastIndexOf('}') + 1;
+          const jsonString = aiResponse.substring(jsonStart, jsonEnd);
+          recipeData = JSON.parse(jsonString);
+        } else if (aiResponse.includes('[') && aiResponse.includes(']')) {
+          const jsonStart = aiResponse.indexOf('[');
+          const jsonEnd = aiResponse.lastIndexOf(']') + 1;
+          const jsonString = aiResponse.substring(jsonStart, jsonEnd);
+          recipeData = JSON.parse(jsonString);
+        } else {
+          throw new Error("Could not extract valid JSON from response");
+        }
+      }
       
       // Validate the structure of the response
       if (!validateRecipeData(recipeData)) {
@@ -128,51 +177,134 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         return null;
       }
       
-      // Generate a reliable image URL from Unsplash for the recipe
-      const cleanRecipeName = recipeName.replace(/\s+/g, ',');
-      const imageUrl = `https://source.unsplash.com/featured/?filipino,food,${cleanRecipeName}`;
+      let recipe, ingredients, steps;
       
-      // Format the response to match our expected structure
-      const recipe = {
-        id: recipeId,
-        title: recipeData.recipe.title || recipeName,
-        imageUrl: imageUrl,
-        prepTime: recipeData.recipe.prepTime || "30 minutes",
-        category: recipeData.recipe.category || "Main Dish",
-        difficulty: recipeData.recipe.difficulty || "Medium",
-        description: recipeData.recipe.description || "A delicious Filipino dish",
-        servings: recipeData.recipe.servings || 4,
-        cookTime: recipeData.recipe.cookTime || "45 minutes",
-        instructions: recipeData.recipe.instructions || "Follow the steps below to prepare this dish."
-      };
-      
-      // Format ingredients with fallback for required fields
-      const ingredients = Array.isArray(recipeData.ingredients) ? recipeData.ingredients.map((ing: any, index: number) => ({
-        id: `ing-${uuidv4()}`,
-        name: ing.name || `Ingredient ${index + 1}`,
-        quantity: (ing.quantity || "1").toString(),
-        unit: ing.unit || "",
-        recipeId: recipeId,
-        isOptional: ing.isOptional || false,
-        hasSubstitutions: ing.hasSubstitutions || false
-      })) : [];
-      
-      // Format steps with reliable image URLs and fallbacks
-      const steps = Array.isArray(recipeData.steps) ? recipeData.steps.map((step: any, index: number) => {
-        // Add step images for key steps (every other step)
-        const stepImageUrl = index % 2 === 0 ? 
-          `https://source.unsplash.com/featured/?cooking,${step.instruction?.split(' ').slice(0, 2).join(',') || 'cooking'}` : 
-          undefined;
-          
-        return {
-          id: `step-${uuidv4()}`,
-          number: step.number || index + 1, // Ensure we have a number even if missing
-          instruction: step.instruction || `Step ${index + 1}`,
-          timeInMinutes: typeof step.timeInMinutes === 'number' ? step.timeInMinutes : 5,
-          isCritical: step.isCritical || false,
-          imageUrl: stepImageUrl
+      // Process data based on format received
+      if (recipeData.recipe && recipeData.ingredients && recipeData.steps) {
+        // Standard format from the transformation
+        recipe = {
+          id: recipeId,
+          title: recipeData.recipe.title || recipeName,
+          imageUrl: recipeData.recipe.imageUrl || `https://source.unsplash.com/featured/?filipino,food,${recipeName.replace(/\s+/g, ',')}`,
+          prepTime: recipeData.recipe.prepTime || "30 minutes",
+          category: recipeData.recipe.category || "Main Dish",
+          difficulty: recipeData.recipe.difficulty || "Medium",
+          description: recipeData.recipe.description || "A delicious Filipino dish",
+          servings: recipeData.recipe.servings || 4,
+          cookTime: recipeData.recipe.cookTime || "45 minutes",
+          instructions: recipeData.recipe.instructions || "Follow the steps below to prepare this dish."
         };
-      }) : [];
+        
+        ingredients = Array.isArray(recipeData.ingredients) ? recipeData.ingredients.map((ing: any, index: number) => ({
+          id: `ing-${uuidv4()}`,
+          name: ing.name || `Ingredient ${index + 1}`,
+          quantity: (ing.quantity || "1").toString(),
+          unit: ing.unit || "",
+          recipeId: recipeId,
+          isOptional: ing.isOptional || false,
+          hasSubstitutions: ing.hasSubstitutions || false
+        })) : [];
+        
+        steps = Array.isArray(recipeData.steps) ? recipeData.steps.map((step: any, index: number) => {
+          // Add step images for key steps (every other step)
+          const stepImageUrl = index % 2 === 0 ? 
+            `https://source.unsplash.com/featured/?cooking,${step.instruction?.split(' ').slice(0, 2).join(',') || 'cooking'}` : 
+            undefined;
+            
+          return {
+            id: `step-${uuidv4()}`,
+            number: step.number || index + 1, // Ensure we have a number even if missing
+            instruction: step.instruction || `Step ${index + 1}`,
+            timeInMinutes: typeof step.timeInMinutes === 'number' ? step.timeInMinutes : 5,
+            isCritical: step.isCritical || false,
+            imageUrl: stepImageUrl
+          };
+        }) : [];
+      } else if (Array.isArray(recipeData) && recipeData.length > 0) {
+        // New array format with recipeName
+        const firstRecipe = recipeData[0];
+        
+        recipe = {
+          id: recipeId,
+          title: firstRecipe.recipeName || recipeName,
+          imageUrl: firstRecipe.imageUrl || `https://source.unsplash.com/featured/?filipino,food,${recipeName.replace(/\s+/g, ',')}`,
+          prepTime: "30 minutes", // Default since not in new format
+          category: firstRecipe.category || "Main Dish",
+          difficulty: "Medium", // Default since not in new format
+          description: firstRecipe.description || "A delicious Filipino dish",
+          servings: 4, // Default since not in new format
+          cookTime: "45 minutes", // Default since not in new format
+          instructions: Array.isArray(firstRecipe.steps) ? firstRecipe.steps.join(". ") : "Follow the steps below to prepare this dish."
+        };
+        
+        ingredients = Array.isArray(firstRecipe.ingredients) ? firstRecipe.ingredients.map((ing: any, index: number) => ({
+          id: `ing-${uuidv4()}`,
+          name: ing.ingredientName || `Ingredient ${index + 1}`,
+          quantity: (ing.quantity || "1").toString(),
+          unit: ing.unit || "",
+          recipeId: recipeId,
+          isOptional: false, // Default since not in new format
+          hasSubstitutions: false // Default since not in new format
+        })) : [];
+        
+        steps = Array.isArray(firstRecipe.steps) ? firstRecipe.steps.map((step: string, index: number) => {
+          // Add step images for key steps (every other step)
+          const stepImageUrl = index % 2 === 0 ? 
+            `https://source.unsplash.com/featured/?cooking,${step?.split(' ').slice(0, 2).join(',') || 'cooking'}` : 
+            undefined;
+            
+          return {
+            id: `step-${uuidv4()}`,
+            number: index + 1,
+            instruction: step || `Step ${index + 1}`,
+            timeInMinutes: 5, // Default since not in new format
+            isCritical: index === 0, // First step is usually important
+            imageUrl: stepImageUrl
+          };
+        }) : [];
+      } else if (recipeData.recipeName) {
+        // Single recipe in new format (not in array)
+        recipe = {
+          id: recipeId,
+          title: recipeData.recipeName || recipeName,
+          imageUrl: recipeData.imageUrl || `https://source.unsplash.com/featured/?filipino,food,${recipeName.replace(/\s+/g, ',')}`,
+          prepTime: "30 minutes", // Default since not in new format
+          category: recipeData.category || "Main Dish",
+          difficulty: "Medium", // Default since not in new format
+          description: recipeData.description || "A delicious Filipino dish",
+          servings: 4, // Default since not in new format
+          cookTime: "45 minutes", // Default since not in new format
+          instructions: Array.isArray(recipeData.steps) ? recipeData.steps.join(". ") : "Follow the steps below to prepare this dish."
+        };
+        
+        ingredients = Array.isArray(recipeData.ingredients) ? recipeData.ingredients.map((ing: any, index: number) => ({
+          id: `ing-${uuidv4()}`,
+          name: ing.ingredientName || `Ingredient ${index + 1}`,
+          quantity: (ing.quantity || "1").toString(),
+          unit: ing.unit || "",
+          recipeId: recipeId,
+          isOptional: false, // Default since not in new format
+          hasSubstitutions: false // Default since not in new format
+        })) : [];
+        
+        steps = Array.isArray(recipeData.steps) ? recipeData.steps.map((step: string, index: number) => {
+          // Add step images for key steps (every other step)
+          const stepImageUrl = index % 2 === 0 ? 
+            `https://source.unsplash.com/featured/?cooking,${step?.split(' ').slice(0, 2).join(',') || 'cooking'}` : 
+            undefined;
+            
+          return {
+            id: `step-${uuidv4()}`,
+            number: index + 1,
+            instruction: step || `Step ${index + 1}`,
+            timeInMinutes: 5, // Default since not in new format
+            isCritical: index === 0, // First step is usually important
+            imageUrl: stepImageUrl
+          };
+        }) : [];
+      } else {
+        throw new Error("Unrecognized recipe data format");
+      }
       
       // Verify we have minimum requirements
       if (ingredients.length === 0 || steps.length === 0) {

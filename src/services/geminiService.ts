@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 type GeminiRequestContent = {
@@ -44,42 +45,31 @@ export const geminiService = {
       {
         text: `You are an AI Cooking Assistant specialized in understanding and retrieving recipes, particularly Filipino cuisine and desserts. Your purpose is to provide detailed, accurate recipe information structured for easy consumption.
 
-**Recipe Discovery & Response Structure:**
+When asked for a recipe, provide a complete, detailed response in JSON format with an ARRAY of recipe objects with the following structure:
+[
+  {
+    "recipeName": "Full Recipe Name",
+    "description": "Brief cultural or flavor description",
+    "culture": "Filipino",
+    "category": "Main Course/Dessert/Appetizer/etc.",
+    "imageUrl": "URL to an image of this dish",
+    "ingredients": [
+      {
+        "ingredientName": "Specific ingredient name",
+        "quantity": "Precise amount",
+        "unit": "Appropriate measurement unit"
+      }
+      // Include ALL ingredients with accurate quantities and measurements
+    ],
+    "steps": [
+      "Step 1 with clear instruction",
+      "Step 2 with clear instruction",
+      // Include ALL steps in proper sequential order
+    ]
+  }
+]
 
-1. When asked for a recipe, provide a complete, detailed response in JSON format with the following structure:
-   {
-     "recipe": {
-       "title": "Full Recipe Name",
-       "description": "Brief cultural or flavor description",
-       "category": "Main Course/Dessert/Appetizer/etc.",
-       "difficulty": "Easy/Medium/Hard",
-       "prepTime": "Preparation time in minutes",
-       "cookTime": "Cooking time in minutes",
-       "servings": number of servings,
-       "instructions": "Brief overview of the cooking process"
-     },
-     "ingredients": [
-       {
-         "name": "Specific ingredient name",
-         "quantity": "Precise amount",
-         "unit": "Appropriate measurement unit",
-         "isOptional": boolean,
-         "hasSubstitutions": boolean
-       }
-       // Include ALL ingredients with accurate quantities and measurements
-     ],
-     "steps": [
-       {
-         "number": sequential step number,
-         "instruction": "Detailed, clear cooking instruction",
-         "timeInMinutes": estimated time for this step,
-         "isCritical": boolean indicating if this is a crucial step
-       }
-       // Include ALL steps in proper sequential order
-     ]
-   }
-
-EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your response contains the complete JSON structure with all required fields populated with accurate, detailed information. Do NOT include any explanatory text before or after the JSON - provide ONLY the JSON object.`
+Format it as valid JSON without explanation. The system will transform this format to the internal application format.`
       }
     ]
   },
@@ -186,9 +176,9 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
   },
   
   /**
-   * Processes the API response to extract the recipe JSON
+   * Processes the API response to extract the recipe JSON and convert it to the expected format
    * @param data The raw API response data
-   * @returns The extracted JSON string
+   * @returns The extracted JSON string in the expected format
    */
   processApiResponse(data: any): string {
     if (!data.candidates || data.candidates.length === 0) {
@@ -209,9 +199,9 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
     // Extract JSON content
     try {
       // Check if the response contains valid JSON by looking for opening and closing braces
-      if (responseText.includes('{') && responseText.includes('}')) {
-        const jsonStart = responseText.indexOf('{');
-        const jsonEnd = responseText.lastIndexOf('}') + 1;
+      if (responseText.includes('[') && responseText.includes(']')) {
+        const jsonStart = responseText.indexOf('[');
+        const jsonEnd = responseText.lastIndexOf(']') + 1;
         
         if (jsonStart >= 0 && jsonEnd > jsonStart) {
           const jsonString = responseText.substring(jsonStart, jsonEnd);
@@ -219,13 +209,20 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
           // Test parse the JSON to validate it
           const parsed = JSON.parse(jsonString);
           
-          // Ensure the parsed object has the expected structure
-          if (!parsed.recipe || !parsed.ingredients || !parsed.steps) {
-            console.warn("Parsed JSON doesn't have the expected recipe structure:", parsed);
-            toast.warning("AI response didn't have the expected recipe structure");
+          // Ensure the parsed array has recipe objects
+          if (!Array.isArray(parsed) || parsed.length === 0) {
+            console.warn("Parsed JSON doesn't have the expected array structure:", parsed);
+            return this.transformToExpectedFormat(parsed);
           }
           
-          return jsonString;
+          // Check if this is already the new array format (with recipeName instead of title)
+          if (parsed[0].recipeName) {
+            // Transform the new format to the expected app format
+            return this.transformToExpectedFormat(parsed);
+          } else {
+            // Return as is if it's already in the expected format
+            return jsonString;
+          }
         }
       }
       
@@ -259,5 +256,92 @@ EXTREMELY IMPORTANT: Never generate incomplete recipes. Always ensure your respo
       
       return JSON.stringify(fallbackRecipe);
     }
+  },
+  
+  /**
+   * Transform the new array format to the expected application format
+   * @param recipes The array of recipes in the new format
+   * @returns A JSON string in the expected format
+   */
+  transformToExpectedFormat(recipes: any): string {
+    // If it's not an array, wrap it in an array
+    const recipeArray = Array.isArray(recipes) ? recipes : [recipes];
+    
+    if (recipeArray.length === 0) {
+      console.warn("Empty recipe array received");
+      return JSON.stringify({
+        recipe: {
+          title: "Recipe Not Available",
+          description: "No recipes were returned",
+          category: "Unknown",
+          difficulty: "Medium",
+          prepTime: "N/A",
+          cookTime: "N/A",
+          servings: 0,
+          instructions: "Recipe generation failed. Please try again later."
+        },
+        ingredients: [],
+        steps: []
+      });
+    }
+    
+    // Take the first recipe from the array
+    const recipe = recipeArray[0];
+    
+    if (!recipe) {
+      console.warn("Invalid recipe object received", recipe);
+      return JSON.stringify({
+        recipe: {
+          title: "Invalid Recipe",
+          description: "The recipe data was not in the expected format",
+          category: "Unknown",
+          difficulty: "Medium",
+          prepTime: "N/A",
+          cookTime: "N/A",
+          servings: 0,
+          instructions: "Please try a different recipe search."
+        },
+        ingredients: [],
+        steps: []
+      });
+    }
+    
+    // Extract step times (approx 5 minutes per step if not specified)
+    const avgStepTime = 5;
+    const totalSteps = Array.isArray(recipe.steps) ? recipe.steps.length : 0;
+    const prepTimeMinutes = totalSteps * avgStepTime;
+    
+    // Transform to expected format
+    const transformedData = {
+      recipe: {
+        title: recipe.recipeName || "Unknown Recipe",
+        description: recipe.description || "A delicious Filipino recipe",
+        category: recipe.category || "Main Dish",
+        difficulty: "Medium", // Default since not in original format
+        prepTime: `${prepTimeMinutes} mins`,
+        cookTime: `${Math.round(prepTimeMinutes * 1.5)} mins`,
+        servings: 4, // Default since not in original format
+        instructions: Array.isArray(recipe.steps) ? recipe.steps.join(". ") : ""
+      },
+      ingredients: Array.isArray(recipe.ingredients) 
+        ? recipe.ingredients.map((ing: any) => ({
+            name: ing.ingredientName || "",
+            quantity: ing.quantity || "",
+            unit: ing.unit || "",
+            hasSubstitutions: false, // Default since not in original format
+            isOptional: false // Default since not in original format
+          }))
+        : [],
+      steps: Array.isArray(recipe.steps)
+        ? recipe.steps.map((step: string, index: number) => ({
+            number: index + 1,
+            instruction: step,
+            timeInMinutes: avgStepTime,
+            isCritical: index === 0 // First step is usually important
+          }))
+        : []
+    };
+    
+    return JSON.stringify(transformedData);
   }
 };

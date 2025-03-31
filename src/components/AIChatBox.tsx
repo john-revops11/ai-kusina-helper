@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { geminiService } from '@/services/geminiService';
+import { openaiService } from '@/services/openaiService';
+import { aiProviderService } from '@/services/aiProviderService';
 import { toast } from 'sonner';
+import AIProviderInfo from '@/components/AIProviderInfo';
 
 type Message = {
   id: string;
@@ -54,8 +57,36 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
         ? `[Context: Currently viewing the ${recipeContext} recipe] ${inputText}`
         : inputText;
         
-      // Get response from Gemini AI
-      const aiResponse = await geminiService.generateContent(contextualQuery);
+      // Get current AI provider
+      const currentProvider = aiProviderService.getCurrentProvider();
+      
+      let aiResponse = '';
+      
+      try {
+        // Try with the primary provider
+        if (currentProvider === 'gemini') {
+          aiResponse = await geminiService.generateContent(contextualQuery);
+        } else {
+          aiResponse = await openaiService.generateContent(contextualQuery);
+        }
+      } catch (primaryError) {
+        // If the primary provider fails, fall back to the other one
+        console.error(`Error with ${currentProvider} AI service:`, primaryError);
+        toast.warning(`${currentProvider.toUpperCase()} failed, using fallback AI`);
+        
+        const fallbackProvider = currentProvider === 'gemini' ? 'openai' : 'gemini';
+        
+        try {
+          if (fallbackProvider === 'gemini') {
+            aiResponse = await geminiService.generateContent(contextualQuery);
+          } else {
+            aiResponse = await openaiService.generateContent(contextualQuery);
+          }
+        } catch (fallbackError) {
+          console.error("Error with fallback AI service:", fallbackError);
+          throw new Error("All AI services failed");
+        }
+      }
       
       // Add AI response to messages
       setMessages((prev) => [
@@ -96,7 +127,10 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
   return (
     <Card className="w-full h-[350px] flex flex-col">
       <CardHeader className="px-4 py-2 border-b">
-        <CardTitle className="text-base">Filipino Cuisine AI Assistant</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Filipino Cuisine AI Assistant</CardTitle>
+          <AIProviderInfo className="text-xs" />
+        </div>
       </CardHeader>
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
