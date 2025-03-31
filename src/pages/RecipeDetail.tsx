@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -8,6 +9,7 @@ import {
   ChevronUp,
   Volume2, 
   VolumeX,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -52,6 +54,9 @@ const RecipeDetail = () => {
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
+  
+  // Timer reference for cleanup
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadRecipeData = async () => {
@@ -114,6 +119,28 @@ const RecipeDetail = () => {
     }
   }, [recipe]);
 
+  // Timer effect to count down
+  useEffect(() => {
+    if (timerRunning && remainingTime > 0) {
+      timerRef.current = window.setTimeout(() => {
+        setRemainingTime(prev => prev - 1);
+      }, 1000);
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+      };
+    } else if (timerRunning && remainingTime === 0) {
+      // Timer finished
+      setTimerRunning(false);
+      toast({
+        title: "Timer Complete",
+        description: `Step ${activeStep + 1} timer is complete!`,
+      });
+    }
+  }, [timerRunning, remainingTime, activeStep, toast]);
+
   const toggleIngredientCheck = (id: string) => {
     setCheckedIngredients(prev => ({
       ...prev,
@@ -130,7 +157,10 @@ const RecipeDetail = () => {
 
   const startTimer = () => {
     if (steps[activeStep]) {
-      setRemainingTime(steps[activeStep].timeInMinutes * 60);
+      if (remainingTime === 0) {
+        // If timer is at 0, reset it first
+        setRemainingTime(steps[activeStep].timeInMinutes * 60);
+      }
       setTimerRunning(true);
     }
   };
@@ -139,15 +169,47 @@ const RecipeDetail = () => {
     setTimerRunning(false);
   };
 
+  const restartTimer = () => {
+    if (steps[activeStep]) {
+      setRemainingTime(steps[activeStep].timeInMinutes * 60);
+      setTimerRunning(true);
+    }
+  };
+
   const markStepComplete = (id: string) => {
     setCompletedSteps(prev => ({
       ...prev,
       [id]: true
     }));
     
+    // Stop the timer if it's running
+    if (timerRunning) {
+      stopTimer();
+    }
+    
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
+      // Reset timer for the next step
+      if (steps[activeStep + 1]?.timeInMinutes) {
+        setRemainingTime(steps[activeStep + 1].timeInMinutes * 60);
+      }
     }
+  };
+
+  const restartCooking = () => {
+    // Reset all states to initial values
+    setActiveStep(0);
+    setCompletedSteps({});
+    setTimerRunning(false);
+    if (steps[0]?.timeInMinutes) {
+      setRemainingTime(steps[0].timeInMinutes * 60);
+    } else {
+      setRemainingTime(0);
+    }
+    
+    toast({
+      description: "Recipe restarted. Starting from the first step.",
+    });
   };
 
   const toggleVoice = () => {
@@ -268,14 +330,24 @@ const RecipeDetail = () => {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="section-title">Cooking Steps</h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs"
-              onClick={toggleVoice}
-            >
-              {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs flex items-center gap-1"
+                onClick={restartCooking}
+              >
+                <RefreshCw size={14} /> Restart
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs"
+                onClick={toggleVoice}
+              >
+                {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -289,22 +361,35 @@ const RecipeDetail = () => {
                   isCompleted={!!completedSteps[step.id]}
                   onStartTimer={startTimer}
                   onStopTimer={stopTimer}
+                  onRestartTimer={restartTimer}
                   timerRunning={timerRunning && index === activeStep}
-                  remainingTime={remainingTime}
+                  remainingTime={index === activeStep ? remainingTime : step.timeInMinutes * 60}
                   onToggleVoice={toggleVoice}
                   voiceEnabled={voiceEnabled}
                 />
               ))}
           </div>
           
-          {activeStep < steps.length && (
-            <Button 
-              className="w-full mt-4" 
-              onClick={() => markStepComplete(steps[activeStep].id)}
-            >
-              {activeStep === steps.length - 1 ? 'Finish Recipe' : 'Mark Step Complete'}
-            </Button>
-          )}
+          <div className="flex flex-col gap-2 mt-4">
+            {activeStep < steps.length && (
+              <Button 
+                className="w-full" 
+                onClick={() => markStepComplete(steps[activeStep].id)}
+              >
+                {activeStep === steps.length - 1 ? 'Finish Recipe' : 'Mark Step Complete'}
+              </Button>
+            )}
+            
+            {activeStep > 0 || Object.keys(completedSteps).length > 0 ? (
+              <Button 
+                variant="outline"
+                className="w-full" 
+                onClick={restartCooking}
+              >
+                <RefreshCw size={16} className="mr-2" /> Restart Cooking
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="fixed bottom-20 right-4 z-40">

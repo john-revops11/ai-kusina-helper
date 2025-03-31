@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export type RecipeStep = {
@@ -20,6 +20,7 @@ interface RecipeStepCardProps {
   isCompleted: boolean;
   onStartTimer: () => void;
   onStopTimer: () => void;
+  onRestartTimer: () => void;
   timerRunning: boolean;
   remainingTime: number;
   onToggleVoice: () => void;
@@ -32,6 +33,7 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   isCompleted,
   onStartTimer,
   onStopTimer,
+  onRestartTimer,
   timerRunning,
   remainingTime,
   onToggleVoice,
@@ -93,22 +95,35 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
                 <span>{step.timeInMinutes} min</span>
               )}
             </div>
-            <Button
-              variant={timerRunning ? "outline" : "default"}
-              size="sm"
-              className="gap-1"
-              onClick={timerRunning ? onStopTimer : onStartTimer}
-            >
+            <div className="flex gap-1">
               {timerRunning ? (
-                <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={onStopTimer}
+                >
                   <Pause size={14} /> Pause
-                </>
+                </Button>
               ) : (
-                <>
-                  <Play size={14} /> Start Timer
-                </>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1"
+                  onClick={onStartTimer}
+                >
+                  <Play size={14} /> Start
+                </Button>
               )}
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={onRestartTimer}
+              >
+                <RefreshCw size={14} /> Reset
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
