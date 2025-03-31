@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, getCurrentUser, loginUser, logoutUser, registerUser } from '@/services/authService';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -17,7 +17,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     const loadUser = async () => {
@@ -40,17 +39,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await loginUser(email, password);
       const user = await getCurrentUser();
       setCurrentUser(user);
-      toast({
-        title: "Success",
-        description: "You have been logged in successfully.",
-      });
+      toast.success("You have been logged in successfully.");
     } catch (error) {
       console.error("Login error:", error);
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password.",
-        variant: "destructive"
-      });
+      toast.error("Invalid email or password.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -62,17 +54,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       await logoutUser();
       setCurrentUser(null);
-      toast({
-        title: "Success",
-        description: "You have been logged out successfully.",
-      });
+      toast.success("You have been logged out successfully.");
     } catch (error) {
       console.error("Logout error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to log out.",
-        variant: "destructive"
-      });
+      toast.error("Failed to log out.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -85,17 +70,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await registerUser(email, password);
       const user = await getCurrentUser();
       setCurrentUser(user);
-      toast({
-        title: "Success",
-        description: "Account created successfully.",
-      });
+      toast.success("Account created successfully.");
     } catch (error) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Failed",
-        description: "Could not create account.",
-        variant: "destructive"
-      });
+      toast.error("Could not create account.");
       throw error;
     } finally {
       setIsLoading(false);

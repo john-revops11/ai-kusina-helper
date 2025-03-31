@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChefHat, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ChefHat, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { initializeUsers } from '@/services/authService';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -25,6 +26,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isLoggingInAsUser, setIsLoggingInAsUser] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -40,6 +42,21 @@ const LoginPage = () => {
       navigate('/');
     } catch (error) {
       console.error('Login failed:', error);
+      toast.error("Login failed. Please check your credentials and try again.");
+    }
+  };
+
+  const handleLoginAsUser = async () => {
+    try {
+      setIsLoggingInAsUser(true);
+      await login("user@example.com", "password123");
+      toast.success("Logged in as demo user");
+      navigate('/');
+    } catch (error) {
+      console.error("Demo login failed:", error);
+      toast.error("Demo login failed. Please initialize users first.");
+    } finally {
+      setIsLoggingInAsUser(false);
     }
   };
 
@@ -47,10 +64,10 @@ const LoginPage = () => {
     try {
       setIsInitializing(true);
       await initializeUsers();
-      alert("Users initialized! Use admin@example.com or user@example.com with password 'password123' to login.");
+      toast.success("Users initialized! You can now use the demo login buttons.");
     } catch (error) {
       console.error("Failed to initialize users:", error);
-      alert("Error initializing users. Check console for details.");
+      toast.error("Error initializing users. Please try again.");
     } finally {
       setIsInitializing(false);
     }
@@ -85,7 +102,7 @@ const LoginPage = () => {
                           <Mail size={18} />
                         </div>
                         <Input
-                          placeholder="Enter your email"
+                          placeholder="user@example.com"
                           className="pl-10"
                           {...field}
                         />
@@ -108,7 +125,7 @@ const LoginPage = () => {
                         </div>
                         <Input
                           type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
+                          placeholder="password123"
                           className="pl-10"
                           {...field}
                         />
@@ -131,21 +148,35 @@ const LoginPage = () => {
             </form>
           </Form>
           
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>
-              Don't have an account?{" "}
-              <Button variant="link" className="p-0" onClick={() => navigate('/register')}>
-                Sign up
-              </Button>
-            </p>
-            <div className="mt-4">
+          <div className="mt-4 space-y-2">
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-center gap-2"
+              onClick={handleLoginAsUser}
+              disabled={isLoggingInAsUser}
+            >
+              <User size={16} />
+              {isLoggingInAsUser ? "Logging in..." : "Login as Demo User"}
+            </Button>
+            
+            <div className="text-center text-sm text-muted-foreground">
+              <p>
+                Don't have an account?{" "}
+                <Button variant="link" className="p-0" onClick={() => navigate('/register')}>
+                  Sign up
+                </Button>
+              </p>
+            </div>
+            
+            <div className="pt-2">
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 size="sm" 
                 onClick={handleInitializeUsers}
                 disabled={isInitializing}
+                className="w-full"
               >
-                Initialize Demo Users
+                {isInitializing ? "Initializing..." : "Initialize Demo Users"}
               </Button>
             </div>
           </div>
