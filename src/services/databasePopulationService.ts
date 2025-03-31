@@ -1,4 +1,3 @@
-
 import { database, ref, get, child, set, remove } from './firebase';
 import { geminiService } from './geminiService';
 import { toast } from "sonner";
@@ -147,6 +146,8 @@ export const databasePopulationService = {
    */
   async deleteExistingRecipe(recipeId: string): Promise<void> {
     try {
+      console.log(`Deleting existing recipe with ID: ${recipeId}`);
+      
       // Delete the recipe and all its related data
       await remove(ref(database, `recipes/${recipeId}`));
       await remove(ref(database, `ingredients/${recipeId}`));
@@ -514,10 +515,12 @@ export const databasePopulationService = {
           await this.deleteExistingRecipe(existingRecipeId);
         } else {
           console.log(`Recipe ${recipeName} already exists in database, skipping`);
-          toast.info(`Recipe "${recipeName}" already exists in database`);
+          toast(`Recipe "${recipeName}" already exists in database`);
           return;
         }
       }
+      
+      console.log(`Generating new data for recipe: ${recipeName}`);
       
       // 1. Get recipe data
       const recipeData = await this.getRecipeDataFromGemini(recipeName);
@@ -527,6 +530,8 @@ export const databasePopulationService = {
       
       // 3. Get recipe steps
       const stepsData = await this.getRecipeStepsFromGemini(recipeName);
+      
+      console.log(`Saving new data for recipe: ${recipeName} with ID: ${recipeData.id}`);
       
       // 4. Store recipe in database
       await set(ref(database, `recipes/${recipeData.id}`), {
@@ -567,14 +572,16 @@ export const databasePopulationService = {
         }
       }
       
+      console.log(`Recipe "${recipeName}" successfully ${forceRegenerate ? 'regenerated' : 'populated'}`);
+      
       if (forceRegenerate) {
-        toast.success(`Recipe "${recipeName}" regenerated with enhanced accuracy`);
+        toast(`Recipe "${recipeName}" regenerated with enhanced accuracy`);
       } else {
-        toast.success(`Recipe "${recipeName}" populated successfully`);
+        toast(`Recipe "${recipeName}" populated successfully`);
       }
     } catch (error) {
       console.error(`Error populating recipe ${recipeName}:`, error);
-      toast.error(`Failed to populate recipe "${recipeName}"`);
+      toast(`Failed to populate recipe "${recipeName}"`);
       throw error;
     }
   },

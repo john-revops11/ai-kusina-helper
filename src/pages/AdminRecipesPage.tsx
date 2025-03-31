@@ -68,7 +68,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   fetchRecipes, 
   fetchIngredientsByRecipeId,
@@ -116,7 +116,6 @@ const AdminRecipesPage = () => {
   const [bulkAction, setBulkAction] = useState<'regenerate' | 'delete' | null>(null);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   
-  const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,11 +139,7 @@ const AdminRecipesPage = () => {
       setRecipes(recipesData);
     } catch (error) {
       console.error("Error loading recipes:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load recipes",
-        variant: "destructive"
-      });
+      toast("Failed to load recipes");
     } finally {
       setIsLoading(false);
     }
@@ -169,11 +164,7 @@ const AdminRecipesPage = () => {
       }));
     } catch (error) {
       console.error("Error loading recipe details:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load recipe details",
-        variant: "destructive"
-      });
+      toast("Failed to load recipe details");
     }
   };
 
@@ -190,17 +181,11 @@ const AdminRecipesPage = () => {
     setRegenerating(prev => ({ ...prev, [recipe.id]: true }));
     
     try {
-      toast({
-        title: "Processing",
-        description: `Regenerating data for "${recipe.title}"...`,
-      });
+      toast(`Regenerating data for "${recipe.title}"...`);
       
       await databasePopulationService.populateSingleRecipe(recipe.title, true);
       
-      toast({
-        title: "Success",
-        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
-      });
+      toast(`"${recipe.title}" data has been regenerated with enhanced accuracy`);
       
       await loadRecipes();
       
@@ -221,11 +206,7 @@ const AdminRecipesPage = () => {
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to regenerate "${recipe.title}" data`,
-        variant: "destructive"
-      });
+      toast(`Failed to regenerate "${recipe.title}" data`);
     } finally {
       setRegenerating(prev => ({ ...prev, [recipe.id]: false }));
     }
@@ -264,19 +245,12 @@ const AdminRecipesPage = () => {
       });
       setRecipes(updatedRecipes);
       
-      toast({
-        title: "Success",
-        description: `Image updated for "${selectedRecipe.title}"`,
-      });
+      toast(`Image updated for "${selectedRecipe.title}"`);
       
       setImageDialogOpen(false);
     } catch (error) {
       console.error("Error updating recipe image:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update recipe image",
-        variant: "destructive"
-      });
+      toast("Failed to update recipe image");
     } finally {
       setIsUpdatingImage(false);
     }
@@ -309,19 +283,12 @@ const AdminRecipesPage = () => {
         return newState;
       });
       
-      toast({
-        title: "Success",
-        description: `"${recipeToDelete.title}" has been deleted`,
-      });
+      toast(`"${recipeToDelete.title}" has been deleted`);
       
       setDeleteDialogOpen(false);
     } catch (error) {
       console.error(`Error deleting recipe ${recipeToDelete.title}:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to delete "${recipeToDelete.title}"`,
-        variant: "destructive"
-      });
+      toast(`Failed to delete "${recipeToDelete.title}"`);
     } finally {
       setIsDeleting(false);
       setRecipeToDelete(null);
@@ -374,27 +341,17 @@ const AdminRecipesPage = () => {
       
       if (result.removed > 0) {
         setRemovedDuplicates(result.recipeNames);
-        toast({
-          title: "Success",
-          description: `Removed ${result.removed} duplicate recipes`,
-        });
+        toast(`Removed ${result.removed} duplicate recipes`);
         
         await loadRecipes();
       } else {
-        toast({
-          title: "No duplicates found",
-          description: "No duplicate recipes were found in the database",
-        });
+        toast("No duplicate recipes were found in the database");
       }
       
       setDuplicateRemovalDialogOpen(false);
     } catch (error) {
       console.error("Error removing duplicate recipes:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove duplicate recipes",
-        variant: "destructive"
-      });
+      toast("Failed to remove duplicate recipes");
     } finally {
       setIsRemovingDuplicates(false);
     }
@@ -425,11 +382,7 @@ const AdminRecipesPage = () => {
 
   const openBulkActionDialog = (action: 'regenerate' | 'delete') => {
     if (selectedRecipes.length === 0) {
-      toast({
-        title: "No recipes selected",
-        description: "Please select at least one recipe first",
-        variant: "destructive"
-      });
+      toast("Please select at least one recipe first");
       return;
     }
     
@@ -447,19 +400,13 @@ const AdminRecipesPage = () => {
         for (const recipeId of selectedRecipes) {
           const recipe = recipes.find(r => r.id === recipeId);
           if (recipe) {
-            toast({
-              title: "Processing",
-              description: `Regenerating data for "${recipe.title}"...`,
-            });
+            toast(`Regenerating data for "${recipe.title}"...`);
             
             await databasePopulationService.populateSingleRecipe(recipe.title, true);
           }
         }
         
-        toast({
-          title: "Success",
-          description: `${selectedRecipes.length} recipes have been regenerated`,
-        });
+        toast(`${selectedRecipes.length} recipes have been regenerated`);
         
       } else if (bulkAction === 'delete') {
         for (const recipeId of selectedRecipes) {
@@ -480,10 +427,7 @@ const AdminRecipesPage = () => {
           return newState;
         });
         
-        toast({
-          title: "Success",
-          description: `${selectedRecipes.length} recipes have been deleted`,
-        });
+        toast(`${selectedRecipes.length} recipes have been deleted`);
       }
       
       setSelectedRecipes([]);
@@ -491,11 +435,7 @@ const AdminRecipesPage = () => {
       
     } catch (error) {
       console.error(`Error performing bulk action:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to ${bulkAction} recipes`,
-        variant: "destructive"
-      });
+      toast(`Failed to ${bulkAction} recipes`);
     } finally {
       setIsBulkProcessing(false);
       setBlkActionDialogOpen(false);
@@ -945,98 +885,4 @@ const AdminRecipesPage = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteRecipe}
-              disabled={isDeleting}
-              className="bg-kusina-red text-white hover:bg-kusina-red/80"
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={duplicateRemovalDialogOpen} onOpenChange={setDuplicateRemovalDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-kusina-orange">Remove Duplicate Recipes</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove all recipes with duplicate names, keeping only the first occurrence of each recipe name.
-              This action cannot be undone. Do you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmRemoveDuplicates}
-              disabled={isRemovingDuplicates}
-              className="bg-kusina-orange text-white hover:bg-kusina-orange/80"
-            >
-              {isRemovingDuplicates ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" />
-              )}
-              Remove Duplicates
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={bulkActionDialogOpen} onOpenChange={setBlkActionDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className={bulkAction === 'delete' ? "text-kusina-red" : "text-kusina-orange"}>
-              {bulkAction === 'regenerate' ? 'Regenerate Selected Recipes' : 'Delete Selected Recipes'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {bulkAction === 'regenerate' 
-                ? `Are you sure you want to regenerate all ${selectedRecipes.length} selected recipes? This will replace their current ingredients and steps with AI-generated ones.`
-                : `Are you sure you want to delete all ${selectedRecipes.length} selected recipes? This action cannot be undone.`
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={executeBulkAction}
-              disabled={isBulkProcessing}
-              className={bulkAction === 'delete' 
-                ? "bg-kusina-red text-white hover:bg-kusina-red/80"
-                : "bg-kusina-orange text-white hover:bg-kusina-orange/80"
-              }
-            >
-              {isBulkProcessing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : bulkAction === 'delete' ? (
-                <Trash2 className="mr-2 h-4 w-4" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              {bulkAction === 'regenerate' ? 'Regenerate Selected' : 'Delete Selected'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
-
-export default AdminRecipesPage;
+              className="border-kusina

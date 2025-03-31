@@ -1,6 +1,7 @@
 
 import { AgentInterface, AgentContext, AgentResponse } from './AgentInterface';
 import { geminiService } from '@/services/geminiService';
+import { toast } from 'sonner';
 
 /**
  * Agent responsible for general chat support and Q&A

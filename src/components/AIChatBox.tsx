@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { geminiService } from '@/services/geminiService';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 type Message = {
   id: string;
@@ -33,7 +33,6 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -70,11 +69,7 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
       ]);
     } catch (error) {
       console.error("Error getting AI response:", error);
-      toast({
-        title: "Error",
-        description: "Failed to get a response from the AI assistant",
-        variant: "destructive"
-      });
+      toast("Failed to get a response from the AI assistant");
     } finally {
       setIsLoading(false);
     }
@@ -83,15 +78,11 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
   const toggleRecording = () => {
     if (isRecording) {
       setIsRecording(false);
-      toast({
-        description: "Voice recording stopped",
-      });
+      toast("Voice recording stopped");
       // In a real app, this would process the voice recording
     } else {
       setIsRecording(true);
-      toast({
-        description: "Voice search started. Speak clearly...",
-      });
+      toast("Voice search started. Speak clearly...");
       // In a real app, this would start voice recording
     }
   };
