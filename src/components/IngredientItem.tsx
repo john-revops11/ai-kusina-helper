@@ -10,6 +10,8 @@ export type Ingredient = {
   quantity: string;
   unit: string;
   hasSubstitutions: boolean;
+  isOptional?: boolean;
+  recipeId?: string;
 };
 
 interface IngredientItemProps {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Check, ChefHat } from 'lucide-react';
@@ -188,7 +187,7 @@ const RecipeSearchPage = () => {
     
     recipeText += "## Ingredients\n";
     recipeIngredients.forEach(ing => {
-      recipeText += `- ${ing.quantity} ${ing.name}${ing.isOptional ? ' (optional)' : ''}\n`;
+      recipeText += `- ${ing.quantity} ${ing.unit} ${ing.name}${ing.isOptional ? ' (optional)' : ''}\n`;
     });
     
     recipeText += "\n## Instructions\n";
@@ -313,7 +312,7 @@ const RecipeSearchPage = () => {
                     <li key={ingredient.id} className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
                       <span>
-                        {ingredient.quantity} {ingredient.name}
+                        {ingredient.quantity} {ingredient.unit} {ingredient.name}
                         {ingredient.isOptional && <span className="text-muted-foreground"> (optional)</span>}
                       </span>
                     </li>

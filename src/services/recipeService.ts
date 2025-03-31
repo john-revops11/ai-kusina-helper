@@ -78,10 +78,14 @@ export const fetchIngredientsByRecipeId = async (recipeId: string): Promise<Ingr
     
     if (snapshot.exists()) {
       const ingredientsData = snapshot.val();
-      return Object.keys(ingredientsData).map(key => ({
-        id: key,
-        ...ingredientsData[key]
-      }));
+      return Object.keys(ingredientsData).map(key => {
+        const ingredient = ingredientsData[key];
+        return {
+          id: key,
+          ...ingredient,
+          unit: ingredient.unit || "", // Ensure unit property exists
+        };
+      });
     } else {
       console.log("No ingredients found for recipe:", recipeId);
       return [];

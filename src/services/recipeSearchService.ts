@@ -67,6 +67,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
           id: `ing-${uuidv4()}`,
           name: 'Main Ingredient',
           quantity: '500g',
+          unit: 'g', // Add the required unit property
           recipeId: recipeId,
           isOptional: false,
           hasSubstitutions: false
@@ -74,7 +75,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         {
           id: `ing-${uuidv4()}`,
           name: 'Secondary Ingredient',
-          quantity: '250g',
+          quantity: '250',
+          unit: 'g', // Add the required unit property
           recipeId: recipeId,
           isOptional: true,
           hasSubstitutions: true
@@ -82,7 +84,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         {
           id: `ing-${uuidv4()}`,
           name: 'Seasoning',
-          quantity: '2 tbsp',
+          quantity: '2',
+          unit: 'tbsp', // Add the required unit property
           recipeId: recipeId,
           isOptional: false,
           hasSubstitutions: true
@@ -151,7 +154,8 @@ export const saveRecipeToDatabase = async (
       ingredientsObj[ing.id] = {
         name: ing.name,
         quantity: ing.quantity,
-        isOptional: ing.isOptional,
+        unit: ing.unit, // Make sure to include the unit property
+        isOptional: ing.isOptional ?? false,
         hasSubstitutions: ing.hasSubstitutions
       };
     });
