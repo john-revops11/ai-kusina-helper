@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ChevronLeft, 
@@ -7,7 +7,10 @@ import {
   Loader2, 
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Image,
+  Check,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,11 +30,20 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { 
   fetchRecipes, 
   fetchIngredientsByRecipeId,
-  fetchRecipeSteps
+  fetchRecipeSteps,
+  updateRecipeImage
 } from '@/services/recipeService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
@@ -46,7 +58,13 @@ const AdminRecipesPage = () => {
   const [recipeIngredients, setRecipeIngredients] = useState<{[key: string]: Ingredient[]}>({});
   const [recipeSteps, setRecipeSteps] = useState<{[key: string]: RecipeStep[]}>({});
   const [regenerating, setRegenerating] = useState<{[key: string]: boolean}>({});
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUpdatingImage, setIsUpdatingImage] = useState(false);
   const { toast } = useToast();
+  const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadRecipes();
@@ -160,42 +178,95 @@ const AdminRecipesPage = () => {
     }
   };
 
+  const openImageDialog = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setNewImageUrl(recipe.imageUrl);
+    setImagePreview(recipe.imageUrl);
+    setImageDialogOpen(true);
+    // Focus the input after dialog opens
+    setTimeout(() => {
+      if (imageUrlInputRef.current) {
+        imageUrlInputRef.current.focus();
+      }
+    }, 100);
+  };
+
+  const handlePreviewImage = () => {
+    if (newImageUrl.trim()) {
+      setImagePreview(newImageUrl);
+    }
+  };
+
+  const handleUpdateImage = async () => {
+    if (!selectedRecipe || !newImageUrl.trim()) return;
+    
+    setIsUpdatingImage(true);
+    try {
+      await updateRecipeImage(selectedRecipe.id, newImageUrl);
+      
+      // Update the recipe in the local state
+      const updatedRecipes = recipes.map(r => {
+        if (r.id === selectedRecipe.id) {
+          return { ...r, imageUrl: newImageUrl };
+        }
+        return r;
+      });
+      setRecipes(updatedRecipes);
+      
+      toast({
+        title: "Success",
+        description: `Image updated for "${selectedRecipe.title}"`,
+      });
+      
+      setImageDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating recipe image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update recipe image",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingImage(false);
+    }
+  };
+
   const filteredRecipes = recipes.filter(recipe => 
     recipe.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="container mx-auto p-4 max-w-6xl pb-20">
+    <div className="container mx-auto p-4 max-w-6xl pb-20 bg-gradient-to-br from-amber-50 to-orange-50">
       <Link to="/admin" className="flex items-center gap-1 mb-4 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={16} />
         <span>Back to admin page</span>
       </Link>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Recipe Management</CardTitle>
+      <Card className="border-kusina-orange/20 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-kusina-orange/10 to-transparent">
+          <CardTitle className="text-kusina-brown text-2xl">Recipe Management</CardTitle>
         </CardHeader>
         
         <CardContent>
           <div className="flex items-center gap-2 mb-6">
-            <Search className="text-muted-foreground" size={18} />
+            <Search className="text-kusina-orange" size={18} />
             <Input 
               type="text" 
               placeholder="Search recipes..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
+              className="flex-1 border-kusina-orange/20 focus-visible:ring-kusina-orange/30"
             />
           </div>
           
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-kusina-orange" />
             </div>
           ) : (
-            <div className="border rounded-md">
+            <div className="border rounded-md border-kusina-orange/20">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-kusina-cream/30">
                   <TableRow>
                     <TableHead className="w-[300px]">Recipe</TableHead>
                     <TableHead>Category</TableHead>
@@ -214,24 +285,47 @@ const AdminRecipesPage = () => {
                     filteredRecipes.map(recipe => (
                       <React.Fragment key={recipe.id}>
                         <TableRow 
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => toggleRecipeExpansion(recipe.id)}
+                          className="cursor-pointer hover:bg-kusina-cream/20"
                         >
                           <TableCell className="font-medium flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-md overflow-hidden shrink-0">
+                            <div 
+                              className="w-10 h-10 rounded-md overflow-hidden shrink-0 hover:ring-2 hover:ring-kusina-orange/50 transition-all cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openImageDialog(recipe);
+                              }}
+                            >
                               <img 
                                 src={recipe.imageUrl} 
                                 alt={recipe.title} 
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
+                                }}
                               />
                             </div>
-                            <span>{recipe.title}</span>
+                            <span 
+                              className="text-kusina-brown"
+                              onClick={() => toggleRecipeExpansion(recipe.id)}
+                            >{recipe.title}</span>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{recipe.category}</Badge>
+                          <TableCell onClick={() => toggleRecipeExpansion(recipe.id)}>
+                            <Badge variant="outline" className="border-kusina-green/50 text-kusina-green">{recipe.category}</Badge>
                           </TableCell>
-                          <TableCell>{recipe.difficulty}</TableCell>
+                          <TableCell onClick={() => toggleRecipeExpansion(recipe.id)}>{recipe.difficulty}</TableCell>
                           <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="mr-2 text-kusina-orange border-kusina-orange/30 hover:bg-kusina-orange/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openImageDialog(recipe);
+                              }}
+                            >
+                              <Image className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -240,6 +334,7 @@ const AdminRecipesPage = () => {
                                 regenerateRecipeData(recipe);
                               }}
                               disabled={regenerating[recipe.id]}
+                              className="text-kusina-brown hover:text-kusina-red"
                             >
                               {regenerating[recipe.id] ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -247,18 +342,25 @@ const AdminRecipesPage = () => {
                                 <RefreshCw className="h-4 w-4" />
                               )}
                             </Button>
-                            {expandedRecipe === recipe.id ? (
-                              <ChevronUp className="inline-block ml-2 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="inline-block ml-2 h-4 w-4" />
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleRecipeExpansion(recipe.id)}
+                              className="text-kusina-brown hover:text-kusina-brown/70"
+                            >
+                              {expandedRecipe === recipe.id ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
                           </TableCell>
                         </TableRow>
                         
                         {expandedRecipe === recipe.id && (
                           <TableRow>
                             <TableCell colSpan={4} className="p-0">
-                              <div className="px-4 py-3 bg-muted/30">
+                              <div className="px-4 py-3 bg-kusina-cream/20">
                                 <Accordion type="single" collapsible className="w-full">
                                   <AccordionItem value="ingredients" className="border-none">
                                     <AccordionTrigger className="py-2">
@@ -335,6 +437,80 @@ const AdminRecipesPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Image Update Dialog */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-kusina-brown">Update Recipe Image</DialogTitle>
+            <DialogDescription>
+              Enter a new image URL for {selectedRecipe?.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2">
+              <Input
+                ref={imageUrlInputRef}
+                placeholder="Image URL"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                className="flex-1 border-kusina-orange/20"
+              />
+              <Button 
+                type="button" 
+                onClick={handlePreviewImage}
+                variant="outline"
+                className="border-kusina-orange/20 text-kusina-orange hover:bg-kusina-orange/10"
+              >
+                Preview
+              </Button>
+            </div>
+            
+            {imagePreview && (
+              <div className="relative aspect-video rounded-md overflow-hidden border border-kusina-orange/20">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image
+                    toast({
+                      title: "Image Error",
+                      description: "This image URL is invalid. Please try another.",
+                      variant: "destructive"
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="flex items-center justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => setImageDialogOpen(false)}
+              className="border-kusina-red/30 text-kusina-red hover:bg-kusina-red/10"
+            >
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateImage} 
+              disabled={isUpdatingImage || !newImageUrl.trim()}
+              className="bg-kusina-green text-white hover:bg-kusina-green/80"
+            >
+              {isUpdatingImage ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
+              Update Image
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

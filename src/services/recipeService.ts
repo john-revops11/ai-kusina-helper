@@ -1,5 +1,5 @@
 
-import { database, ref, get, child } from './firebase';
+import { database, ref, get, child, update } from './firebase';
 import { Recipe } from '@/components/RecipeCard';
 import { RecipeStep } from '@/components/RecipeStepCard';
 import { Ingredient } from '@/components/IngredientItem';
@@ -127,5 +127,18 @@ export const fetchIngredientSubstitutes = async (ingredientId: string): Promise<
   } catch (error) {
     console.error("Error fetching ingredient substitutes:", error);
     return [];
+  }
+};
+
+export const updateRecipeImage = async (recipeId: string, imageUrl: string): Promise<void> => {
+  try {
+    const updates: {[key: string]: string} = {};
+    updates[`recipes/${recipeId}/imageUrl`] = imageUrl;
+    
+    await update(ref(database), updates);
+    console.log(`Updated image for recipe ${recipeId}`);
+  } catch (error) {
+    console.error("Error updating recipe image:", error);
+    throw error;
   }
 };
