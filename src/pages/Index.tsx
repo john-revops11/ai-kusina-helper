@@ -52,8 +52,9 @@ const Index = () => {
 
   // Filter recipes based on search query and active category
   const filteredRecipes = recipes.filter(recipe => {
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || recipe.category === activeCategory;
+    // Check if recipe and recipe.title are defined before calling toLowerCase()
+    const matchesSearch = recipe?.title ? recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+    const matchesCategory = activeCategory === 'All' || recipe?.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
 
