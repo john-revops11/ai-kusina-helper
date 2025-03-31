@@ -7,6 +7,8 @@ import ExplorePage from "./pages/ExplorePage";
 import RecipeDetail from "./pages/RecipeDetail";
 import CookPage from "./pages/CookPage";
 import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
+import CookingHistoryPage from "./pages/CookingHistoryPage";
 import ShoppingListPage from "./pages/ShoppingListPage";
 import AdminPage from "./pages/AdminPage";
 import AdminRecipesPage from "./pages/AdminRecipesPage";
@@ -25,6 +27,8 @@ function App() {
         <Route path="/recipe/:id" element={<RecipeDetail />} />
         <Route path="/cook/:id" element={<CookPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/cooking-history" element={<CookingHistoryPage />} />
         <Route path="/shopping-list" element={<ShoppingListPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/recipes" element={<AdminRecipesPage />} />
