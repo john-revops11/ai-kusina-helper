@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 type GeminiRequestContent = {
@@ -92,7 +91,7 @@ export const geminiService = {
    */
   async generateContent(userQuery: string): Promise<string> {
     try {
-      const requestBody: GeminiRequestBody = {
+      const requestBody = {
         contents: [
           {
             role: "user",
@@ -141,7 +140,6 @@ export const geminiService = {
       return candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
-      toast.error("Failed to get response from AI assistant");
       return "I'm sorry, I couldn't process your request at this time. Please try again later.";
     }
   }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Mic, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -36,10 +35,9 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const [noResultsVisible, setNoResultsVisible] = useState(false);
   const { toast } = useToast();
 
-  // Initialize Fuse for fuzzy search
   const fuseOptions = {
     keys: ['title'],
-    threshold: 0.4, // Lower threshold means more strict matching
+    threshold: 0.4,
     includeScore: true
   };
   
@@ -50,7 +48,6 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       const results = fuse.search(searchText).map(result => result.item);
       setSuggestions(results);
       
-      // If no results found and there's text, show the "not found" prompt
       setNoResultsVisible(results.length === 0);
     } else {
       setSuggestions([]);
@@ -63,7 +60,6 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
     setSearchText(value);
     setShowSuggestions(value.length >= 2);
     
-    // If user clears the search, notify parent component
     if (!value.trim()) {
       onSearch('');
     }
@@ -72,12 +68,9 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (suggestions.length > 0) {
-        // If suggestions exist, select first one
         onSelectRecipe(suggestions[0]);
       } else if (searchText.trim().length > 0) {
-        // If no suggestions but there's text, perform search
         onSearch(searchText.trim());
-        // Also show the "not found" prompt to allow searching online
         setNoResultsVisible(true);
       }
       setShowSuggestions(false);
@@ -98,13 +91,11 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       toast({
         description: "Voice search stopped",
       });
-      // In a real app, this would process the voice recording
     } else {
       setIsRecording(true);
       toast({
         description: "Voice search started. Say a recipe name...",
       });
-      // In a real app, this would start voice recording
     }
   };
 
@@ -127,10 +118,8 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
     setShowSuggestions(false);
   };
 
-  // Handle click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      // Don't close if clicking on the search UI elements
       const searchContainer = document.querySelector('.search-container');
       if (searchContainer && !searchContainer.contains(e.target as Node)) {
         setShowSuggestions(false);
@@ -187,7 +176,6 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         </Button>
       </div>
 
-      {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-md shadow-lg max-h-60 overflow-auto">
           <ul className="py-1">
@@ -215,10 +203,9 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         </div>
       )}
 
-      {/* No results prompt */}
       {noResultsVisible && searchText.trim().length > 0 && (
         <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-md shadow-lg p-4">
-          <p className="text-sm mb-2">Recipe not found. Would you like me to search for "{searchText}" online?</p>
+          <p className="text-sm mb-2">Recipe not found. Would you like to search for "{searchText}" using AI?</p>
           <div className="flex justify-end space-x-2">
             <Button 
               variant="outline" 
@@ -232,7 +219,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
               size="sm"
               onClick={handleSearchExternal}
             >
-              Search Online
+              Search with AI
             </Button>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Check, ChefHat } from 'lucide-react';
@@ -104,6 +103,11 @@ const RecipeSearchPage = () => {
     setRecipeSteps([]);
     
     try {
+      toast({
+        title: 'Searching',
+        description: 'Looking for recipe using AI...',
+      });
+      
       const result = await searchRecipeOnline(query);
       if (result) {
         setSelectedRecipe(result.recipe);
@@ -113,12 +117,12 @@ const RecipeSearchPage = () => {
         
         toast({
           title: 'Recipe Found',
-          description: `Found recipe for "${query}" online`,
+          description: `Found recipe for "${query}" using AI`,
         });
       } else {
         toast({
           title: 'Not Found',
-          description: `No recipe found for "${query}"`,
+          description: `AI couldn't find a recipe for "${query}"`,
           variant: 'destructive',
         });
       }
@@ -126,7 +130,7 @@ const RecipeSearchPage = () => {
       console.error('Error searching recipe online:', error);
       toast({
         title: 'Error',
-        description: 'Failed to search for recipe online',
+        description: 'Failed to search for recipe using AI',
         variant: 'destructive',
       });
     } finally {
@@ -252,13 +256,13 @@ const RecipeSearchPage = () => {
           <div className="mt-3">
             <p className="text-sm text-muted-foreground">
               {isLoading || isSearchingOnline ? (
-                'Searching for recipes...'
+                'Searching for recipes with AI...'
               ) : selectedRecipe ? (
                 'Recipe found!'
               ) : recipes.length > 0 ? (
                 'Type a recipe name to search'
               ) : (
-                'No recipes available. Try searching online.'
+                'No recipes available. Try searching with AI.'
               )}
             </p>
           </div>
