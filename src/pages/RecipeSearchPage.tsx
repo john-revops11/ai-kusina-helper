@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Check, ChefHat } from 'lucide-react';
@@ -81,9 +82,7 @@ const RecipeSearchPage = () => {
         
         // Fetch steps
         const steps = await fetchRecipeSteps(recipe.id);
-        // Sort steps by number
-        const sortedSteps = steps.sort((a, b) => a.number - b.number);
-        setRecipeSteps(sortedSteps);
+        setRecipeSteps(steps);
       }
     } catch (error) {
       console.error('Error fetching recipe details:', error);
@@ -273,6 +272,7 @@ const RecipeSearchPage = () => {
                 src={selectedRecipe.imageUrl} 
                 alt={selectedRecipe.title} 
                 className="w-full h-full object-cover"
+                loading="eager"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";

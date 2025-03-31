@@ -77,6 +77,8 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       } else if (searchText.trim().length > 0) {
         // If no suggestions but there's text, perform search
         onSearch(searchText.trim());
+        // Also show the "not found" prompt to allow searching online
+        setNoResultsVisible(true);
       }
       setShowSuggestions(false);
     }
@@ -107,9 +109,16 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   };
 
   const handleSearchExternal = () => {
-    onSearchExternal(searchText.trim());
-    setNoResultsVisible(false);
-    setShowSuggestions(false);
+    if (searchText.trim()) {
+      onSearchExternal(searchText.trim());
+      setNoResultsVisible(false);
+      setShowSuggestions(false);
+    } else {
+      toast({
+        description: "Please enter a recipe name to search",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSelectRecipe = (recipe: Recipe) => {
@@ -120,8 +129,12 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
 
   // Handle click outside to close suggestions
   useEffect(() => {
-    const handleClickOutside = () => {
-      setShowSuggestions(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't close if clicking on the search UI elements
+      const searchContainer = document.querySelector('.search-container');
+      if (searchContainer && !searchContainer.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
     };
 
     document.addEventListener('click', handleClickOutside);
@@ -131,7 +144,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+    <div className="relative w-full search-container" onClick={e => e.stopPropagation()}>
       <div className="flex items-center">
         <div className="relative flex-1">
           {isSearching ? (
@@ -203,7 +216,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       )}
 
       {/* No results prompt */}
-      {noResultsVisible && (
+      {noResultsVisible && searchText.trim().length > 0 && (
         <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-md shadow-lg p-4">
           <p className="text-sm mb-2">Recipe not found. Would you like me to search for "{searchText}" online?</p>
           <div className="flex justify-end space-x-2">

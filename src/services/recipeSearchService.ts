@@ -66,8 +66,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         {
           id: `ing-${uuidv4()}`,
           name: 'Main Ingredient',
-          quantity: '500g',
-          unit: 'g', // Add the required unit property
+          quantity: '500',
+          unit: 'g',
           recipeId: recipeId,
           isOptional: false,
           hasSubstitutions: false
@@ -76,7 +76,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
           id: `ing-${uuidv4()}`,
           name: 'Secondary Ingredient',
           quantity: '250',
-          unit: 'g', // Add the required unit property
+          unit: 'g',
           recipeId: recipeId,
           isOptional: true,
           hasSubstitutions: true
@@ -85,7 +85,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
           id: `ing-${uuidv4()}`,
           name: 'Seasoning',
           quantity: '2',
-          unit: 'tbsp', // Add the required unit property
+          unit: 'tbsp',
           recipeId: recipeId,
           isOptional: false,
           hasSubstitutions: true
@@ -154,9 +154,9 @@ export const saveRecipeToDatabase = async (
       ingredientsObj[ing.id] = {
         name: ing.name,
         quantity: ing.quantity,
-        unit: ing.unit, // Make sure to include the unit property
-        isOptional: ing.isOptional ?? false,
-        hasSubstitutions: ing.hasSubstitutions
+        unit: ing.unit,
+        isOptional: ing.isOptional || false,
+        hasSubstitutions: ing.hasSubstitutions || false
       };
     });
     await set(ref(database, `ingredients/${recipe.id}`), ingredientsObj);
@@ -168,7 +168,7 @@ export const saveRecipeToDatabase = async (
         number: step.number,
         instruction: step.instruction,
         timeInMinutes: step.timeInMinutes,
-        isCritical: step.isCritical,
+        isCritical: step.isCritical || false,
         imageUrl: step.imageUrl || null
       };
     });
