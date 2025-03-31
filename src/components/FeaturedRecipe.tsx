@@ -13,11 +13,12 @@ interface FeaturedRecipeProps {
 const FeaturedRecipe: React.FC<FeaturedRecipeProps> = ({ recipe }) => {
   return (
     <div className="relative w-full rounded-xl overflow-hidden shadow-lg border border-kusina-orange/20 hover:shadow-xl transition-all duration-300">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-kusina-brown/30 to-kusina-brown/80">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-kusina-brown/30 to-kusina-brown/80" style={{ height: '250px' }}>
         <img 
           src={recipe.imageUrl} 
           alt={recipe.title}
           className="w-full h-full object-cover mix-blend-overlay"
+          loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070"; // Fallback image of Filipino food

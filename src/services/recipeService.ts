@@ -103,10 +103,12 @@ export const fetchRecipeSteps = async (recipeId: string): Promise<RecipeStep[]> 
     
     if (snapshot.exists()) {
       const stepsData = snapshot.val();
-      return Object.keys(stepsData).map(key => ({
+      // Map data and sort by step number immediately
+      const steps = Object.keys(stepsData).map(key => ({
         id: key,
         ...stepsData[key]
       }));
+      return steps.sort((a, b) => a.number - b.number);
     } else {
       console.log("No steps found for recipe:", recipeId);
       return [];

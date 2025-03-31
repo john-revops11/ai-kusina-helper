@@ -190,6 +190,7 @@ const RecipeDetail = () => {
           src={recipe?.imageUrl} 
           alt={recipe?.title} 
           className="w-full h-full object-cover brightness-50"
+          loading="eager" // Load header image eagerly for better UX
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "https://images.unsplash.com/photo-1617611647086-baf8019744ab?q=80&w=2070";
@@ -283,7 +284,7 @@ const RecipeDetail = () => {
 
           <div className="space-y-4">
             {steps
-              .sort((a, b) => a.number - b.number) // Ensure steps are ordered by number
+              .sort((a, b) => a.number - b.number) // Ensure steps are always ordered by number
               .map((step, index) => (
                 <RecipeStepCard
                   key={step.id}
