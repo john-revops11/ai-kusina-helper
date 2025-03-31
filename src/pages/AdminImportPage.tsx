@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -23,7 +22,6 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-// Define the expected structure for imported data
 type ImportedRecipe = {
   recipeName: string;
   description: string;
@@ -38,7 +36,6 @@ type ImportedRecipe = {
   }[];
 };
 
-// Import mode options
 type ImportMode = 'update' | 'create-new';
 
 const AdminImportPage = () => {
@@ -53,7 +50,6 @@ const AdminImportPage = () => {
   const [dupesFound, setDupesFound] = useState(0);
   const [importMode, setImportMode] = useState<ImportMode>('update');
 
-  // Handle file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -67,13 +63,10 @@ const AdminImportPage = () => {
     reader.readAsText(file);
   };
 
-  // Validate JSON data
   const validateJsonData = (data: string) => {
     try {
-      // Try to parse the JSON
       const parsedData = JSON.parse(data);
       
-      // Check if it's an array
       if (!Array.isArray(parsedData)) {
         setValidationResult({
           isValid: false,
@@ -82,7 +75,6 @@ const AdminImportPage = () => {
         return;
       }
       
-      // Check if array has items
       if (parsedData.length === 0) {
         setValidationResult({
           isValid: false,
@@ -91,7 +83,6 @@ const AdminImportPage = () => {
         return;
       }
       
-      // Basic structure validation
       let isValid = true;
       let missingFields: string[] = [];
       
@@ -111,16 +102,13 @@ const AdminImportPage = () => {
         return;
       }
       
-      // Check for potential duplicates
       checkForDuplicates(parsedData);
       
-      // Success
       setValidationResult({
         isValid: true,
         message: 'Data validation successful',
         recipeCount: parsedData.length
       });
-      
     } catch (error) {
       setValidationResult({
         isValid: false,
@@ -129,7 +117,6 @@ const AdminImportPage = () => {
     }
   };
 
-  // Check for potential duplicate recipes in the database
   const checkForDuplicates = async (recipes: ImportedRecipe[]) => {
     try {
       let duplicateCount = 0;
@@ -150,7 +137,6 @@ const AdminImportPage = () => {
     }
   };
 
-  // Process validated data and import to Firebase
   const importRecipes = async () => {
     if (!jsonData || !validationResult?.isValid) {
       toast.error('Please provide valid JSON data first');
@@ -168,36 +154,31 @@ const AdminImportPage = () => {
       
       for (const recipe of recipes) {
         try {
-          // Check if recipe exists
           const exists = await databasePopulationService.recipeExists(recipe.recipeName);
           const existingRecipeId = await databasePopulationService.findExistingRecipeId(recipe.recipeName);
           
-          if (exists) {
+          if (exists && existingRecipeId) {
             if (importMode === 'update') {
-              // Update the existing recipe
-              if (existingRecipeId) {
-                await importSingleRecipe(recipe, existingRecipeId);
-                toast.info(`Updated "${recipe.recipeName}"`);
-                updateCount++;
-              }
+              await importSingleRecipe(recipe, existingRecipeId);
+              toast.info(`Updated "${recipe.recipeName}"`);
+              updateCount++;
             } else if (importMode === 'create-new') {
-              // Create as new recipe
               const newId = await importSingleRecipe(recipe);
               toast.success(`Added "${recipe.recipeName}" as a new entry`);
               successCount++;
             } else if (!overwriteExisting) {
-              // Skip this recipe if it exists and overwrite is off
               toast.info(`Skipping "${recipe.recipeName}" as it already exists`);
               skipCount++;
               continue;
             }
           } else {
-            // Recipe doesn't exist, create new
-            const newId = await importSingleRecipe(recipe);
+            await importSingleRecipe(recipe);
+            toast.success(`Added new recipe: "${recipe.recipeName}"`);
             successCount++;
           }
         } catch (error) {
           console.error(`Error importing recipe ${recipe.recipeName}:`, error);
+          toast.error(`Failed to import "${recipe.recipeName}"`);
           errorCount++;
         }
       }
@@ -211,23 +192,22 @@ const AdminImportPage = () => {
     }
   };
 
-  // Import a single recipe to Firebase
   const importSingleRecipe = async (importedRecipe: ImportedRecipe, existingId?: string) => {
-    // Check if recipe already exists
     const recipeId = existingId || databasePopulationService.generateId();
     
-    // If updating existing recipe and we need to delete first
-    if (existingId && overwriteExisting) {
+    console.log(`Importing recipe "${importedRecipe.recipeName}" with ID: ${recipeId}, existing: ${!!existingId}`);
+    
+    if (existingId && overwriteExisting && importMode === 'update') {
+      console.log(`Completely overwriting existing recipe: ${existingId}`);
       await databasePopulationService.deleteExistingRecipe(existingId);
     }
     
-    // Map the imported recipe to our Firebase structure
     const recipeData = {
       id: recipeId,
       title: importedRecipe.recipeName,
       description: importedRecipe.description,
       category: importedRecipe.category,
-      prepTime: '30 mins', // Default values, could be added to import schema
+      prepTime: '30 mins',
       cookTime: '45 mins',
       difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard',
       servings: 4,
@@ -235,10 +215,8 @@ const AdminImportPage = () => {
       instructions: importedRecipe.steps.join('\n')
     };
     
-    // Store recipe in database
     await set(ref(database, `recipes/${recipeId}`), recipeData);
     
-    // Create and store ingredients
     const ingredients = {};
     for (const importedIngredient of importedRecipe.ingredients) {
       const ingredientId = databasePopulationService.generateId();
@@ -247,12 +225,11 @@ const AdminImportPage = () => {
         name: importedIngredient.ingredientName,
         quantity: importedIngredient.quantity,
         unit: importedIngredient.unit || '',
-        hasSubstitutions: false // Default to false, could be added to import schema
+        hasSubstitutions: false
       };
     }
     await set(ref(database, `ingredients/${recipeId}`), ingredients);
     
-    // Create and store steps
     const steps = {};
     importedRecipe.steps.forEach((step, index) => {
       const stepId = databasePopulationService.generateId();
@@ -260,8 +237,8 @@ const AdminImportPage = () => {
         id: stepId,
         number: index + 1,
         instruction: step,
-        timeInMinutes: 5, // Default value, could be added to import schema
-        isCritical: index === 0 // First step is critical by default
+        timeInMinutes: 5,
+        isCritical: index === 0
       };
     });
     await set(ref(database, `steps/${recipeId}`), steps);
@@ -269,7 +246,6 @@ const AdminImportPage = () => {
     return recipeId;
   };
 
-  // Handle text input change
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const data = e.target.value;
     setJsonData(data);
