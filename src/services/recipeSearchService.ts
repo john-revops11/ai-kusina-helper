@@ -7,6 +7,35 @@ import { Ingredient } from '@/components/IngredientItem';
 import { geminiService } from './geminiService';
 import { toast } from 'sonner';
 
+/**
+ * Validates the structure of a recipe object
+ * @param recipeData The recipe data to validate
+ * @returns Whether the recipe data is valid
+ */
+const validateRecipeData = (recipeData: any): boolean => {
+  if (!recipeData) return false;
+  
+  // Check for recipe object with required fields
+  if (!recipeData.recipe || 
+      !recipeData.recipe.title || 
+      !recipeData.recipe.category || 
+      !recipeData.recipe.difficulty) {
+    return false;
+  }
+  
+  // Check for ingredients array
+  if (!Array.isArray(recipeData.ingredients) || recipeData.ingredients.length === 0) {
+    return false;
+  }
+  
+  // Check for steps array
+  if (!Array.isArray(recipeData.steps) || recipeData.steps.length === 0) {
+    return false;
+  }
+  
+  return true;
+};
+
 // Use AI to search for recipes online
 export const searchRecipeOnline = async (recipeName: string): Promise<{
   recipe: Recipe & {
@@ -22,7 +51,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     // Generate a unique ID for the new recipe
     const recipeId = uuidv4();
     
-    // Create the prompt for Gemini AI
+    // Create the prompt for Gemini AI - ensure we're asking for JSON
     const prompt = `Please provide a detailed Filipino recipe for "${recipeName}" in the exact JSON format specified in your instructions. Make sure to include complete and accurate ingredients with precise measurements, and detailed step-by-step cooking instructions. Only return the JSON object.`;
     
     // Call Gemini AI to get recipe information
@@ -34,23 +63,27 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     console.log("AI Response:", aiResponse);
     
     // Check if the response starts with error message
-    if (aiResponse.startsWith("I'm sorry") || aiResponse.includes("Recipe Not Available") || aiResponse.includes("Recipe Unavailable")) {
+    if (aiResponse.startsWith("I'm sorry") || 
+        aiResponse.includes("Recipe Not Available") || 
+        aiResponse.includes("Recipe Unavailable")) {
       toast.error(`Could not find recipe for "${recipeName}"`, {
         description: "Try a different recipe or try again later"
       });
       return null;
     }
     
-    let jsonStr = aiResponse;
-    
-    // Try to clean the response string if needed
+    // Try to clean and parse the response
     try {
       // Parse the JSON response - this might throw if JSON is invalid
-      const recipeData = JSON.parse(jsonStr);
+      const recipeData = JSON.parse(aiResponse);
       
       // Validate the structure of the response
-      if (!recipeData.recipe || !recipeData.ingredients || !recipeData.steps) {
-        throw new Error("Incomplete recipe data structure");
+      if (!validateRecipeData(recipeData)) {
+        console.error("Invalid recipe data structure:", recipeData);
+        toast.error("Received invalid recipe data", {
+          description: "The recipe format was incorrect"
+        });
+        return null;
       }
       
       // Generate a reliable image URL from Unsplash for the recipe
@@ -99,6 +132,15 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         };
       }) : [];
       
+      // Verify we have minimum requirements
+      if (ingredients.length === 0 || steps.length === 0) {
+        console.error("Missing ingredients or steps:", { ingredients, steps });
+        toast.error("Recipe is missing ingredients or steps", {
+          description: "Please try searching for a different recipe"
+        });
+        return null;
+      }
+      
       // Log the created recipe for debugging
       console.log("Successfully created recipe:", {
         recipe,
@@ -115,7 +157,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       };
     } catch (error) {
       console.error('Error parsing recipe data:', error);
-      console.error('Problematic JSON string:', jsonStr);
+      console.error('Problematic JSON string:', aiResponse);
       
       toast.error("Failed to parse recipe data", {
         description: "The AI generated an invalid response format"
