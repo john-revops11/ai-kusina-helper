@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, CookingPot, Search, User, List } from 'lucide-react';
+import { Home, CookingPot, Search, User, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -31,14 +31,14 @@ const MobileNavBar = () => {
     {
       icon: <CookingPot size={20} />,
       label: 'Cook',
-      href: '/cook',
-      isActive: path === '/cook',
+      href: '/cook/1', // Fixed to go to a specific recipe ID
+      isActive: path.startsWith('/cook'),
     },
     {
-      icon: <List size={20} />,
-      label: 'My List',
-      href: '/list',
-      isActive: path === '/list',
+      icon: <ShoppingCart size={20} />,
+      label: 'Shopping',
+      href: '/shopping-list',
+      isActive: path === '/shopping-list',
     },
     {
       icon: <User size={20} />,
@@ -55,7 +55,7 @@ const MobileNavBar = () => {
           key={index}
           to={item.href}
           className={cn(
-            "mobile-nav-item p-2 rounded-lg",
+            "mobile-nav-item flex flex-col items-center text-[10px] p-2 rounded-lg",
             item.isActive ? "text-primary" : "text-muted-foreground"
           )}
         >
