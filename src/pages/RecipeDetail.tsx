@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -18,23 +18,28 @@ import {
   AccordionTrigger 
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import MobileNavBar from '@/components/MobileNavBar';
 import IngredientItem from '@/components/IngredientItem';
 import RecipeStepCard from '@/components/RecipeStepCard';
 import AIChatBox from '@/components/AIChatBox';
-
 import { 
-  mockRecipes, 
-  mockIngredients, 
-  mockRecipeSteps,
-  mockIngredientSubstitutes
-} from '@/data/mockData';
+  fetchRecipeById, 
+  fetchIngredientsByRecipeId, 
+  fetchRecipeSteps,
+  fetchIngredientSubstitutes,
+  type RecipeDetail
+} from '@/services/recipeService';
+import { Ingredient } from '@/components/IngredientItem';
+import { RecipeStep } from '@/components/RecipeStepCard';
 
 const RecipeDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const recipe = mockRecipes.find(r => r.id === id);
-  const ingredients = mockIngredients[id || ''] || [];
-  const steps = mockRecipeSteps[id || ''] || [];
+  const { toast } = useToast();
+  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [steps, setSteps] = useState<RecipeStep[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [activeStep, setActiveStep] = useState(0);
@@ -44,10 +49,64 @@ const RecipeDetail = () => {
   const [showSubstitutes, setShowSubstitutes] = useState<Record<string, boolean>>({});
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
 
-  if (!recipe) {
-    return <div className="p-4">Recipe not found</div>;
-  }
+  useEffect(() => {
+    const loadRecipeData = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      try {
+        // Fetch recipe details
+        const recipeData = await fetchRecipeById(id);
+        if (recipeData) {
+          setRecipe(recipeData);
+          
+          // Fetch ingredients
+          const ingredientsData = await fetchIngredientsByRecipeId(id);
+          setIngredients(ingredientsData);
+          
+          // Fetch recipe steps
+          const stepsData = await fetchRecipeSteps(id);
+          setSteps(stepsData);
+          
+          // Fetch substitutes for ingredients that have them
+          const substitutesPromises = ingredientsData
+            .filter(ing => ing.hasSubstitutions)
+            .map(async (ing) => {
+              const subs = await fetchIngredientSubstitutes(ing.id);
+              return { id: ing.id, substitutes: subs };
+            });
+          
+          const substitutesResults = await Promise.all(substitutesPromises);
+          const substitutesMap: Record<string, string[]> = {};
+          
+          substitutesResults.forEach(result => {
+            substitutesMap[result.id] = result.substitutes;
+          });
+          
+          setSubstitutes(substitutesMap);
+        } else {
+          toast({
+            title: "Not Found",
+            description: "Recipe not found",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error loading recipe data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load recipe details",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadRecipeData();
+  }, [id, toast]);
 
   const toggleIngredientCheck = (id: string) => {
     setCheckedIngredients(prev => ({
@@ -94,6 +153,32 @@ const RecipeDetail = () => {
   const toggleAiAssistant = () => {
     setAiAssistantOpen(!aiAssistantOpen);
   };
+
+  if (isLoading) {
+    return (
+      <div className="pb-20 min-h-screen p-4">
+        <div className="h-60 bg-muted animate-pulse rounded-md mb-4"></div>
+        <div className="space-y-4">
+          <div className="h-10 bg-muted animate-pulse rounded-md w-1/2"></div>
+          <div className="h-20 bg-muted animate-pulse rounded-md"></div>
+          <div className="h-20 bg-muted animate-pulse rounded-md"></div>
+        </div>
+        <MobileNavBar />
+      </div>
+    );
+  }
+
+  if (!recipe) {
+    return (
+      <div className="p-4 flex flex-col items-center justify-center min-h-screen">
+        <p className="text-xl font-bold">Recipe not found</p>
+        <Link to="/" className="mt-4">
+          <Button>Back to Home</Button>
+        </Link>
+        <MobileNavBar />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-20 min-h-screen">
@@ -149,7 +234,9 @@ const RecipeDetail = () => {
                       }
                       showAddToList={true}
                       onAddToList={() => {
-                        console.log('Add to shopping list:', ingredient.name);
+                        toast({
+                          description: `${ingredient.name} added to shopping list`
+                        });
                         // In a real app, this would add to a shopping list
                       }}
                     />
@@ -159,9 +246,11 @@ const RecipeDetail = () => {
                       <div className="ml-8 mt-1 mb-2 p-2 bg-muted rounded-md text-sm">
                         <p className="font-medium text-xs mb-1">Substitutes:</p>
                         <ul className="space-y-1">
-                          {mockIngredientSubstitutes[ingredient.id]?.map((sub, idx) => (
+                          {substitutes[ingredient.id]?.map((sub, idx) => (
                             <li key={idx} className="text-xs text-muted-foreground">• {sub}</li>
-                          ))}
+                          )) || (
+                            <li className="text-xs text-muted-foreground">Loading substitutes...</li>
+                          )}
                         </ul>
                       </div>
                     )}
@@ -229,7 +318,7 @@ const RecipeDetail = () => {
             aiAssistantOpen ? 'translate-y-0' : 'translate-y-full'
           }`}
         >
-          <AIChatBox />
+          <AIChatBox recipeContext={recipe.title} />
         </div>
       </div>
 

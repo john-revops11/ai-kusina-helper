@@ -15,11 +15,17 @@ type Message = {
   timestamp: Date;
 };
 
-const AIChatBox: React.FC = () => {
+interface AIChatBoxProps {
+  recipeContext?: string;
+}
+
+const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your AI cooking assistant for Philippine cuisine. How can I help you with your cooking today?",
+      text: recipeContext 
+        ? `Hello! I'm your AI cooking assistant for Philippine cuisine. Ask me anything about ${recipeContext} or any other Filipino recipe!`
+        : "Hello! I'm your AI cooking assistant for Philippine cuisine. How can I help you with your cooking today?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -44,8 +50,13 @@ const AIChatBox: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Enhance query with context if available
+      const contextualQuery = recipeContext
+        ? `[Context: Currently viewing the ${recipeContext} recipe] ${inputText}`
+        : inputText;
+        
       // Get response from Gemini AI
-      const aiResponse = await geminiService.generateContent(inputText);
+      const aiResponse = await geminiService.generateContent(contextualQuery);
       
       // Add AI response to messages
       setMessages((prev) => [
@@ -79,7 +90,7 @@ const AIChatBox: React.FC = () => {
     } else {
       setIsRecording(true);
       toast({
-        description: "Voice recording started. Speak clearly...",
+        description: "Voice search started. Speak clearly...",
       });
       // In a real app, this would start voice recording
     }

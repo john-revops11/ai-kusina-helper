@@ -111,7 +111,7 @@ export const geminiService = {
       };
       
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelId}:streamGenerateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelId}:generateContent?key=${this.apiKey}`,
         {
           method: "POST",
           headers: {
@@ -126,16 +126,19 @@ export const geminiService = {
         throw new Error(`Gemini API error: ${JSON.stringify(errorData)}`);
       }
       
-      // Parse the stream response
-      const textResponse = await response.text();
+      const data = await response.json();
       
-      // This might need adjustments based on the actual response format
-      // The current implementation assumes a simple text response
-      if (!textResponse) {
-        throw new Error("Empty response from Gemini API");
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error("No candidates in Gemini API response");
       }
       
-      return textResponse;
+      const candidate = data.candidates[0];
+      
+      if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+        throw new Error("No content in Gemini API response candidate");
+      }
+      
+      return candidate.content.parts[0].text || "I couldn't generate a response. Please try again.";
     } catch (error) {
       console.error("Error generating content with Gemini:", error);
       toast.error("Failed to get response from AI assistant");
