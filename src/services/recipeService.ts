@@ -165,3 +165,42 @@ export const deleteRecipe = async (recipeId: string): Promise<void> => {
     throw error;
   }
 };
+
+// New function to remove duplicate recipes
+export const removeDuplicateRecipes = async (): Promise<{removed: number, recipeNames: string[]}> => {
+  try {
+    const recipes = await fetchRecipes();
+    
+    // Create a map to track recipes by title (case insensitive)
+    const uniqueRecipes: Map<string, Recipe> = new Map();
+    const duplicatesToRemove: Recipe[] = [];
+    const removedRecipeNames: string[] = [];
+    
+    // First pass - identify the duplicates (keeping the first occurrence)
+    recipes.forEach(recipe => {
+      const normalizedTitle = recipe.title.toLowerCase().trim();
+      
+      if (!uniqueRecipes.has(normalizedTitle)) {
+        // Keep this recipe as the unique one
+        uniqueRecipes.set(normalizedTitle, recipe);
+      } else {
+        // This is a duplicate, mark for removal
+        duplicatesToRemove.push(recipe);
+        removedRecipeNames.push(recipe.title);
+      }
+    });
+    
+    // Second pass - remove the duplicates
+    const deletePromises = duplicatesToRemove.map(recipe => deleteRecipe(recipe.id));
+    await Promise.all(deletePromises);
+    
+    console.log(`Removed ${duplicatesToRemove.length} duplicate recipes`);
+    return {
+      removed: duplicatesToRemove.length,
+      recipeNames: removedRecipeNames
+    };
+  } catch (error) {
+    console.error("Error removing duplicate recipes:", error);
+    throw error;
+  }
+};

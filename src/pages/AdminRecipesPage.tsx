@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -14,10 +13,11 @@ import {
   Trash2,
   Filter,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
   Table, 
@@ -74,7 +74,8 @@ import {
   fetchRecipeSteps,
   updateRecipeImage,
   deleteRecipe,
-  fetchCategories
+  fetchCategories,
+  removeDuplicateRecipes
 } from '@/services/recipeService';
 import { databasePopulationService } from '@/services/databasePopulationService';
 import { Recipe } from '@/components/RecipeCard';
@@ -104,6 +105,10 @@ const AdminRecipesPage = () => {
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
   const [filtersVisible, setFiltersVisible] = useState(false);
+  
+  const [isRemovingDuplicates, setIsRemovingDuplicates] = useState(false);
+  const [duplicateRemovalDialogOpen, setDuplicateRemovalDialogOpen] = useState(false);
+  const [removedDuplicates, setRemovedDuplicates] = useState<string[]>([]);
   
   const { toast } = useToast();
   const imageUrlInputRef = useRef<HTMLInputElement>(null);
@@ -334,18 +339,15 @@ const AdminRecipesPage = () => {
       let comparison = 0;
       
       if (field === 'title') {
-        // Add null checks for title
         const titleA = a.title || '';
         const titleB = b.title || '';
         comparison = titleA.localeCompare(titleB);
       } else if (field === 'category') {
-        // Add null checks for category
         const categoryA = a.category || '';
         const categoryB = b.category || '';
         comparison = categoryA.localeCompare(categoryB);
       } else if (field === 'difficulty') {
         const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-        // Add null checks and fallbacks for difficulty
         const diffA = a.difficulty ? difficultyOrder[a.difficulty] || 0 : 0;
         const diffB = b.difficulty ? difficultyOrder[b.difficulty] || 0 : 0;
         comparison = diffA - diffB;
@@ -353,6 +355,43 @@ const AdminRecipesPage = () => {
       
       return direction === 'asc' ? comparison : -comparison;
     });
+  };
+
+  const handleRemoveDuplicates = async () => {
+    setDuplicateRemovalDialogOpen(true);
+  };
+
+  const confirmRemoveDuplicates = async () => {
+    setIsRemovingDuplicates(true);
+    try {
+      const result = await removeDuplicateRecipes();
+      
+      if (result.removed > 0) {
+        setRemovedDuplicates(result.recipeNames);
+        toast({
+          title: "Success",
+          description: `Removed ${result.removed} duplicate recipes`,
+        });
+        
+        await loadRecipes();
+      } else {
+        toast({
+          title: "No duplicates found",
+          description: "No duplicate recipes were found in the database",
+        });
+      }
+      
+      setDuplicateRemovalDialogOpen(false);
+    } catch (error) {
+      console.error("Error removing duplicate recipes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove duplicate recipes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRemovingDuplicates(false);
+    }
   };
 
   const filteredAndSortedRecipes = (() => {
@@ -385,6 +424,23 @@ const AdminRecipesPage = () => {
       <Card className="border-kusina-orange/20 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-kusina-orange/10 to-transparent">
           <CardTitle className="text-kusina-brown text-2xl">Recipe Management</CardTitle>
+          <CardDescription>
+            Manage your recipes, remove duplicates, and update recipe information.
+          </CardDescription>
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={handleRemoveDuplicates}
+              className="bg-kusina-orange text-white hover:bg-kusina-orange/80"
+              disabled={isRemovingDuplicates}
+            >
+              {isRemovingDuplicates ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              Remove Duplicate Recipes
+            </Button>
+          </div>
         </CardHeader>
         
         <CardContent>
@@ -755,6 +811,37 @@ const AdminRecipesPage = () => {
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={duplicateRemovalDialogOpen} onOpenChange={setDuplicateRemovalDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-kusina-orange">Remove Duplicate Recipes</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all recipes with duplicate names, keeping only the first occurrence of each recipe name.
+              This action cannot be undone. Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-kusina-brown/30 text-kusina-brown hover:bg-kusina-brown/10"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveDuplicates}
+              disabled={isRemovingDuplicates}
+              className="bg-kusina-orange text-white hover:bg-kusina-orange/80"
+            >
+              {isRemovingDuplicates ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              Remove Duplicates
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
