@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -131,29 +132,33 @@ const AdminRecipesPage = () => {
         description: `Regenerating data for "${recipe.title}"...`,
       });
       
-      await databasePopulationService.populateSingleRecipe(recipe.title, true);
+      // The function now returns the recipe ID or null
+      const recipeId = await databasePopulationService.populateSingleRecipe(recipe.title, true);
       
-      toast({
-        title: "Success",
-        description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
-      });
-      
-      await loadRecipes();
-      
-      setRecipeIngredients(prev => {
-        const newState = {...prev};
-        delete newState[recipe.id];
-        return newState;
-      });
-      
-      setRecipeSteps(prev => {
-        const newState = {...prev};
-        delete newState[recipe.id];
-        return newState;
-      });
-      
-      if (expandedRecipe === recipe.id) {
-        loadRecipeDetails(recipe.id);
+      if (recipeId) {
+        toast({
+          title: "Success",
+          description: `"${recipe.title}" data has been regenerated with enhanced accuracy`,
+        });
+        
+        await loadRecipes();
+        
+        // Clear the cached data so it will be refetched
+        setRecipeIngredients(prev => {
+          const newState = {...prev};
+          delete newState[recipe.id];
+          return newState;
+        });
+        
+        setRecipeSteps(prev => {
+          const newState = {...prev};
+          delete newState[recipe.id];
+          return newState;
+        });
+        
+        if (expandedRecipe === recipe.id) {
+          loadRecipeDetails(recipeId);
+        }
       }
     } catch (error) {
       console.error(`Error regenerating recipe ${recipe.title}:`, error);
