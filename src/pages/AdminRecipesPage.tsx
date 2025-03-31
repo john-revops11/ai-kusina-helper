@@ -373,6 +373,7 @@ const AdminRecipesPage = () => {
           description: `Removed ${result.removed} duplicate recipes`,
         });
         
+        // Refresh the recipes list after removing duplicates
         await loadRecipes();
       } else {
         toast({
@@ -536,6 +537,7 @@ const AdminRecipesPage = () => {
             </div>
           ) : (
             <div className="border rounded-md border-kusina-orange/20">
+              
               <Table>
                 <TableHeader className="bg-kusina-cream/30">
                   <TableRow>
@@ -554,6 +556,7 @@ const AdminRecipesPage = () => {
                     </TableRow>
                   ) : (
                     filteredAndSortedRecipes.map(recipe => (
+                      
                       <React.Fragment key={recipe.id}>
                         <TableRow 
                           className="cursor-pointer hover:bg-kusina-cream/20"
@@ -566,7 +569,14 @@ const AdminRecipesPage = () => {
                                 openImageDialog(recipe);
                               }}
                             >
-                              {/* Replace image with placeholder div */}
+                              <img
+                                src={recipe.imageUrl || getLocalFallbackImage()}
+                                alt={recipe.title}
+                                className="object-cover w-full h-full"
+                                onError={(e: any) => {
+                                  e.target.src = getLocalFallbackImage();
+                                }}
+                              />
                             </div>
                             <span 
                               className="text-kusina-brown"
@@ -700,10 +710,12 @@ const AdminRecipesPage = () => {
                           </TableRow>
                         )}
                       </React.Fragment>
+                      
                     ))
                   )}
                 </TableBody>
               </Table>
+              
             </div>
           )}
         </CardContent>
@@ -739,7 +751,14 @@ const AdminRecipesPage = () => {
             
             {imagePreview && (
               <div className="relative aspect-video rounded-md overflow-hidden border border-kusina-orange/20 bg-gray-300">
-                {/* Remove the actual image component to prevent flickering */}
+                <img
+                  src={imagePreview}
+                  alt="Image Preview"
+                  className="object-cover w-full h-full"
+                  onError={(e: any) => {
+                    e.target.src = getLocalFallbackImage();
+                  }}
+                />
               </div>
             )}
           </div>

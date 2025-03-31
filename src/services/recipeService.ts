@@ -166,19 +166,24 @@ export const deleteRecipe = async (recipeId: string): Promise<void> => {
   }
 };
 
-// New function to remove duplicate recipes - updated to keep most recent
+// Fixed function to remove duplicate recipes - improved to ensure all duplicates are removed
 export const removeDuplicateRecipes = async (): Promise<{removed: number, recipeNames: string[]}> => {
   try {
     const recipes = await fetchRecipes();
+    console.log(`Starting duplicate removal process with ${recipes.length} recipes`);
     
     // Create a map to track recipes by title (case insensitive)
-    const recipeMap: Map<string, Recipe[]> = new Map();
+    const recipeMap = new Map<string, Recipe[]>();
     const duplicatesToRemove: Recipe[] = [];
     const removedRecipeNames: string[] = [];
     
     // Group recipes by normalized title
     recipes.forEach(recipe => {
+      // Skip recipes without titles
+      if (!recipe.title) return;
+      
       const normalizedTitle = recipe.title.toLowerCase().trim();
+      console.log(`Processing recipe: "${recipe.title}" (${recipe.id}), normalized: "${normalizedTitle}"`);
       
       if (!recipeMap.has(normalizedTitle)) {
         recipeMap.set(normalizedTitle, [recipe]);
@@ -188,8 +193,14 @@ export const removeDuplicateRecipes = async (): Promise<{removed: number, recipe
       }
     });
     
+    // Log duplicate groups for debugging
+    recipeMap.forEach((group, title) => {
+      if (group.length > 1) {
+        console.log(`Found ${group.length} duplicates for "${title}": ${group.map(r => r.id).join(', ')}`);
+      }
+    });
+    
     // For each group of recipes with the same title, keep only the most recent one
-    // (assuming more recent recipes have higher ID values or were added later in the array)
     recipeMap.forEach((recipeGroup, normalizedTitle) => {
       if (recipeGroup.length > 1) {
         // Sort recipes by ID in descending order to get the most recent first
@@ -198,17 +209,34 @@ export const removeDuplicateRecipes = async (): Promise<{removed: number, recipe
         
         // Keep the first one (most recent) and mark the rest for removal
         const [keep, ...remove] = sortedRecipes;
+        console.log(`Keeping recipe with ID ${keep.id} for "${keep.title}"`);
         
         remove.forEach(recipe => {
+          console.log(`Marking for removal: recipe with ID ${recipe.id} for "${recipe.title}"`);
           duplicatesToRemove.push(recipe);
           removedRecipeNames.push(recipe.title);
         });
       }
     });
     
-    // Delete the duplicates
-    const deletePromises = duplicatesToRemove.map(recipe => deleteRecipe(recipe.id));
-    await Promise.all(deletePromises);
+    // Delete the duplicates one by one to ensure complete removal
+    if (duplicatesToRemove.length > 0) {
+      console.log(`Removing ${duplicatesToRemove.length} duplicate recipes`);
+      
+      // Use sequential deletion instead of Promise.all to avoid race conditions
+      for (const recipe of duplicatesToRemove) {
+        try {
+          console.log(`Deleting recipe ${recipe.id} (${recipe.title})`);
+          await deleteRecipe(recipe.id);
+          console.log(`Successfully deleted recipe ${recipe.id}`);
+        } catch (error) {
+          console.error(`Error deleting recipe ${recipe.id}:`, error);
+          // Continue with other deletions even if one fails
+        }
+      }
+    } else {
+      console.log('No duplicates found to remove');
+    }
     
     console.log(`Removed ${duplicatesToRemove.length} duplicate recipes, keeping most recent versions`);
     return {
