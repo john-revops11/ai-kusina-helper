@@ -1,3 +1,4 @@
+
 import { database, ref, set } from './firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { Recipe } from '@/components/RecipeCard';
@@ -33,9 +34,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     
     if (!jsonMatch) {
       console.error("Could not extract JSON from AI response");
-      toast({
-        title: "Error",
-        description: "The AI response format was invalid. Please try again.",
+      toast("The AI response format was invalid. Please try again.", {
+        description: "Error processing recipe data",
         variant: "destructive"
       });
       return null;
@@ -97,19 +97,17 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       };
     } catch (error) {
       console.error('Error parsing recipe data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to parse recipe data. Please try again.",
+      toast("Failed to parse recipe data. Please try again.", {
+        description: "The AI generated an invalid response format",
         variant: "destructive"
       });
       return null;
     }
   } catch (error) {
     console.error('Error searching recipe online:', error);
-    toast({
-      title: "Error",
-      description: "Failed to search for recipe online. Please try again.",
-      variant: "destructive"
+    toast("Failed to search for recipe online. Please try again.", {
+        description: "Error connecting to AI service",
+        variant: "destructive"
     });
     return null;
   }
