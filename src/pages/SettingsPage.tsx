@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import MobileNavBar from '@/components/MobileNavBar';
+import voiceService from '@/services/voiceService';
 import { 
   Card, 
   CardContent, 
@@ -25,10 +26,27 @@ import {
 
 const SettingsPage = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const [voiceGuidance, setVoiceGuidance] = useState(true);
+  const [voiceGuidance, setVoiceGuidance] = useState(voiceService.enabled);
   const [measurementSystem, setMeasurementSystem] = useState('metric');
   const [language, setLanguage] = useState('english');
   const { toast } = useToast();
+  
+  // Load saved voice preference on component mount
+  useEffect(() => {
+    // Initialize voice service if not already done
+    const savedPreference = voiceService.initialize();
+    setVoiceGuidance(savedPreference);
+    
+    // Demo voice feature on page load if enabled
+    if (savedPreference) {
+      setTimeout(() => {
+        voiceService.speak("Voice guidance is enabled. You can change this setting here.", {
+          voice: "nova", // Use a female voice
+          speed: 1.1
+        });
+      }, 1000);
+    }
+  }, []);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -39,9 +57,23 @@ const SettingsPage = () => {
   };
 
   const toggleVoiceGuidance = () => {
-    setVoiceGuidance(!voiceGuidance);
+    const newValue = !voiceGuidance;
+    setVoiceGuidance(newValue);
+    voiceService.setEnabled(newValue);
+    
+    if (newValue) {
+      // Immediately demonstrate the voice
+      voiceService.speak("Voice guidance enabled. I'll guide you through your cooking process.", {
+        force: true,
+        voice: "nova"
+      });
+    } else {
+      // Stop any playing audio
+      voiceService.stopAllAudio();
+    }
+    
     toast({
-      description: `Voice guidance ${!voiceGuidance ? 'enabled' : 'disabled'}`,
+      description: `Voice guidance ${newValue ? 'enabled' : 'disabled'}`,
     });
   };
 
@@ -50,6 +82,10 @@ const SettingsPage = () => {
     toast({
       description: `Measurement system changed to ${value}`,
     });
+    
+    if (voiceGuidance) {
+      voiceService.speak(`Measurement system changed to ${value}`);
+    }
   };
 
   const changeLanguage = (value: string) => {
@@ -57,6 +93,10 @@ const SettingsPage = () => {
     toast({
       description: `Language changed to ${value}`,
     });
+    
+    if (voiceGuidance) {
+      voiceService.speak(`Language changed to ${value}`);
+    }
   };
 
   return (

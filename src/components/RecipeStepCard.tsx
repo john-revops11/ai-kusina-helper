@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import voiceService from '@/services/voiceService';
 
 export type RecipeStep = {
   id: string;
@@ -39,6 +40,14 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   onToggleVoice,
   voiceEnabled,
 }) => {
+  useEffect(() => {
+    // When a step becomes active and voice is enabled, read the instruction
+    if (isActive && voiceEnabled && !isCompleted) {
+      const announcement = `Step ${step.number}. ${step.instruction}`;
+      voiceService.speak(announcement);
+    }
+  }, [isActive, step, voiceEnabled, isCompleted]);
+
   // Format remaining time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -60,6 +69,16 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
     return fallbackImages[step.number % fallbackImages.length];
   };
 
+  const handleToggleVoice = () => {
+    onToggleVoice();
+    
+    // If enabling voice, immediately speak the instruction
+    if (!voiceEnabled && isActive) {
+      const announcement = `Step ${step.number}. ${step.instruction}`;
+      voiceService.speak(announcement, { force: true });
+    }
+  };
+
   return (
     <Card className={`mb-4 transition-all duration-300 ${isActive ? 'ring-2 ring-primary' : ''} ${isCompleted ? 'opacity-60' : ''}`}>
       <CardContent className="p-4">
@@ -75,7 +94,7 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onToggleVoice}
+            onClick={handleToggleVoice}
             className="h-8 w-8"
           >
             {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}

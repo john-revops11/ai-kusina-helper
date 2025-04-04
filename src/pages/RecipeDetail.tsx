@@ -24,6 +24,7 @@ import IngredientItem from '@/components/IngredientItem';
 import RecipeStepCard from '@/components/RecipeStepCard';
 import AIChatBox from '@/components/AIChatBox';
 import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
+import voiceService from '@/services/voiceService';
 import { 
   fetchRecipeById, 
   fetchIngredientsByRecipeId, 
@@ -49,7 +50,7 @@ const RecipeDetail = () => {
   const [timerRunning, setTimerRunning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
   const [showSubstitutes, setShowSubstitutes] = useState<Record<string, boolean>>({});
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(voiceService.enabled);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
@@ -69,6 +70,11 @@ const RecipeDetail = () => {
         const recipeData = await fetchRecipeById(id);
         if (recipeData) {
           setRecipe(recipeData);
+          
+          if (voiceEnabled) {
+            const announcement = `Recipe loaded: ${recipeData.title}. ${recipeData.description}`;
+            voiceService.speak(announcement);
+          }
           
           const ingredientsData = await fetchIngredientsByRecipeId(id);
           setIngredients(ingredientsData);
@@ -112,7 +118,7 @@ const RecipeDetail = () => {
     };
     
     loadRecipeData();
-  }, [id, toast]);
+  }, [id, toast, voiceEnabled]);
 
   useEffect(() => {
     if (recipe) {
@@ -190,6 +196,19 @@ const RecipeDetail = () => {
       if (steps[activeStep + 1]?.timeInMinutes) {
         setRemainingTime(steps[activeStep + 1].timeInMinutes * 60);
       }
+      
+      if (voiceEnabled) {
+        const nextStep = steps[activeStep + 1];
+        if (nextStep) {
+          setTimeout(() => {
+            voiceService.speak(`Moving to step ${nextStep.number}: ${nextStep.instruction}`);
+          }, 1000);
+        }
+      }
+    } else if (activeStep === steps.length - 1) {
+      if (voiceEnabled) {
+        voiceService.speak("Congratulations! You've completed all steps in the recipe. Enjoy your meal!");
+      }
     }
   };
 
@@ -206,10 +225,23 @@ const RecipeDetail = () => {
     toast({
       description: "Recipe restarted. Starting from the first step.",
     });
+    
+    if (voiceEnabled && steps.length > 0) {
+      voiceService.speak(`Recipe restarted. Starting with step 1: ${steps[0].instruction}`);
+    }
   };
 
   const toggleVoice = () => {
-    setVoiceEnabled(!voiceEnabled);
+    const newValue = !voiceEnabled;
+    setVoiceEnabled(newValue);
+    voiceService.setEnabled(newValue);
+    
+    if (newValue && steps.length > 0 && activeStep < steps.length) {
+      const currentStep = steps[activeStep];
+      voiceService.speak(`Voice guidance enabled. Current step ${currentStep.number}: ${currentStep.instruction}`, { force: true });
+    } else if (!newValue) {
+      voiceService.stopAllAudio();
+    }
   };
 
   const toggleAiAssistant = () => {
@@ -328,7 +360,7 @@ const RecipeDetail = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-xs"
+                className={`text-xs ${voiceEnabled ? 'text-primary' : ''}`}
                 onClick={toggleVoice}
               >
                 {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
