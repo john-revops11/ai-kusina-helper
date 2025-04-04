@@ -44,7 +44,7 @@ const CookPage = () => {
       <header className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CookingPot className="text-primary" size={24} />
-          <h1 className="text-xl font-bold">Let's Cook</h1>
+          <h1 className="text-xl font-bold">Cookerist</h1>
         </div>
         <div className="flex gap-2">
           <Link to="/search">

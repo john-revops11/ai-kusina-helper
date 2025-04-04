@@ -1,5 +1,5 @@
 
-# AI Kusina Helper
+# Cookerist
 
 A smart kitchen assistant application designed to help you discover, prepare, and enjoy delicious meals.
 
@@ -31,7 +31,7 @@ To set up the project locally:
 git clone <your-repo-url>
 
 # Navigate to the project directory
-cd ai-kusina-helper
+cd cookerist
 
 # Install dependencies
 npm install

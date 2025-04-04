@@ -67,7 +67,7 @@ const Index = () => {
       <header className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CookingPot className="text-primary" size={24} />
-          <h1 className="text-xl font-bold">AI Kusina</h1>
+          <h1 className="text-xl font-bold">Cookerist</h1>
         </div>
         <Link to="/admin">
           <Button variant="ghost" size="icon">
