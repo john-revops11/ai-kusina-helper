@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ interface RecipeStepCardProps {
   remainingTime: number;
   onToggleVoice: () => void;
   voiceEnabled: boolean;
+  sequenceMode?: boolean;
 }
 
 const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
@@ -39,12 +39,13 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   remainingTime,
   onToggleVoice,
   voiceEnabled,
+  sequenceMode = false,
 }) => {
   useEffect(() => {
     // When a step becomes active and voice is enabled, read the instruction
     if (isActive && voiceEnabled && !isCompleted) {
       const announcement = `Step ${step.number}. ${step.instruction}`;
-      voiceService.speak(announcement);
+      voiceService.speak(announcement, { stepNumber: step.number });
     }
   }, [isActive, step, voiceEnabled, isCompleted]);
 
@@ -75,7 +76,7 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
     // If enabling voice, immediately speak the instruction
     if (!voiceEnabled && isActive) {
       const announcement = `Step ${step.number}. ${step.instruction}`;
-      voiceService.speak(announcement, { force: true });
+      voiceService.speak(announcement, { force: true, stepNumber: step.number });
     }
   };
 
@@ -89,6 +90,9 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
             </Badge>
             {step.isCritical && (
               <Badge variant="destructive" className="text-xs">Critical Step</Badge>
+            )}
+            {sequenceMode && step.number <= voiceService.lastSpokenStep && (
+              <Badge variant="secondary" className="text-xs">Spoken</Badge>
             )}
           </div>
           <Button

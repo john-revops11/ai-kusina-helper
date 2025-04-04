@@ -23,6 +23,18 @@ export const voiceService = {
    * Whether voice guidance is enabled
    */
   enabled: true,
+
+  /**
+   * Whether sequence mode is enabled
+   * When true, voice guidance will only play in sequence from step 1 onwards
+   */
+  sequenceMode: false,
+
+  /**
+   * The last step number that was spoken
+   * Used for sequence mode to ensure steps are followed in order
+   */
+  lastSpokenStep: 0,
   
   /**
    * Set whether voice guidance is enabled
@@ -32,16 +44,34 @@ export const voiceService = {
     // Save preference to localStorage
     localStorage.setItem('voiceGuidanceEnabled', value ? 'true' : 'false');
   },
+
+  /**
+   * Set whether sequence mode is enabled
+   */
+  setSequenceMode(value: boolean) {
+    this.sequenceMode = value;
+    // Save preference to localStorage
+    localStorage.setItem('voiceSequenceModeEnabled', value ? 'true' : 'false');
+    // Reset last spoken step when toggling sequence mode
+    this.lastSpokenStep = 0;
+  },
   
   /**
    * Initialize the voice service with user preferences
    */
   initialize() {
-    // Load preference from localStorage
+    // Load voice guidance preference from localStorage
     const savedPreference = localStorage.getItem('voiceGuidanceEnabled');
     if (savedPreference !== null) {
       this.enabled = savedPreference === 'true';
     }
+
+    // Load sequence mode preference from localStorage
+    const savedSequenceMode = localStorage.getItem('voiceSequenceModeEnabled');
+    if (savedSequenceMode !== null) {
+      this.sequenceMode = savedSequenceMode === 'true';
+    }
+    
     return this.enabled;
   },
   
@@ -55,10 +85,22 @@ export const voiceService = {
     voice?: string; 
     speed?: number;
     cacheKey?: string;
+    stepNumber?: number;
   }): Promise<void> {
     // If voice guidance is disabled and not forced, return early
     if (!this.enabled && !options?.force) {
       return;
+    }
+    
+    // Check sequence mode
+    if (this.sequenceMode && options?.stepNumber !== undefined) {
+      // In sequence mode, only speak if this is the next step in sequence
+      if (options.stepNumber !== this.lastSpokenStep + 1 && !options.force) {
+        console.log(`Skipping step ${options.stepNumber} speech due to sequence mode (last: ${this.lastSpokenStep})`);
+        return;
+      }
+      // Update last spoken step
+      this.lastSpokenStep = options.stepNumber;
     }
     
     // Default options
@@ -67,6 +109,9 @@ export const voiceService = {
     const cacheKey = options?.cacheKey || `${text}-${voice}-${speed}`;
     
     try {
+      // Stop any currently playing audio before starting a new one
+      this.stopAllAudio();
+      
       // Check cache first
       if (this.audioCache.has(cacheKey)) {
         const audioElement = this.audioCache.get(cacheKey);
@@ -127,6 +172,13 @@ export const voiceService = {
       audio.pause();
       audio.currentTime = 0;
     });
+  },
+
+  /**
+   * Reset the sequence mode counter
+   */
+  resetSequence() {
+    this.lastSpokenStep = 0;
   }
 };
 

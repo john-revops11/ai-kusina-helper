@@ -9,6 +9,7 @@ import {
   Volume2, 
   VolumeX,
   RefreshCw,
+  ListOrdered,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -51,6 +52,7 @@ const RecipeDetail = () => {
   const [remainingTime, setRemainingTime] = useState(0);
   const [showSubstitutes, setShowSubstitutes] = useState<Record<string, boolean>>({});
   const [voiceEnabled, setVoiceEnabled] = useState(voiceService.enabled);
+  const [sequenceMode, setSequenceMode] = useState(voiceService.sequenceMode);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({});
   const [conversationId, setConversationId] = useState<string>('');
@@ -201,7 +203,7 @@ const RecipeDetail = () => {
         const nextStep = steps[activeStep + 1];
         if (nextStep) {
           setTimeout(() => {
-            voiceService.speak(`Moving to step ${nextStep.number}: ${nextStep.instruction}`);
+            voiceService.speak(`Moving to step ${nextStep.number}: ${nextStep.instruction}`, { stepNumber: nextStep.number });
           }, 1000);
         }
       }
@@ -216,6 +218,8 @@ const RecipeDetail = () => {
     setActiveStep(0);
     setCompletedSteps({});
     setTimerRunning(false);
+    voiceService.resetSequence();
+    
     if (steps[0]?.timeInMinutes) {
       setRemainingTime(steps[0].timeInMinutes * 60);
     } else {
@@ -227,7 +231,7 @@ const RecipeDetail = () => {
     });
     
     if (voiceEnabled && steps.length > 0) {
-      voiceService.speak(`Recipe restarted. Starting with step 1: ${steps[0].instruction}`);
+      voiceService.speak(`Recipe restarted. Starting with step 1: ${steps[0].instruction}`, { stepNumber: 1 });
     }
   };
 
@@ -238,9 +242,34 @@ const RecipeDetail = () => {
     
     if (newValue && steps.length > 0 && activeStep < steps.length) {
       const currentStep = steps[activeStep];
-      voiceService.speak(`Voice guidance enabled. Current step ${currentStep.number}: ${currentStep.instruction}`, { force: true });
+      voiceService.speak(`Voice guidance enabled. Current step ${currentStep.number}: ${currentStep.instruction}`, { force: true, stepNumber: currentStep.number });
     } else if (!newValue) {
       voiceService.stopAllAudio();
+    }
+  };
+
+  const toggleSequenceMode = () => {
+    const newValue = !sequenceMode;
+    setSequenceMode(newValue);
+    voiceService.setSequenceMode(newValue);
+    
+    if (newValue) {
+      voiceService.resetSequence();
+      toast({
+        description: "Sequence mode enabled. Voice guidance will follow step order.",
+      });
+      
+      if (voiceEnabled) {
+        voiceService.speak("Sequence mode enabled. Voice guidance will now follow steps in order starting from step 1.", { force: true });
+      }
+    } else {
+      toast({
+        description: "Sequence mode disabled. Voice guidance will play for any step.",
+      });
+      
+      if (voiceEnabled) {
+        voiceService.speak("Sequence mode disabled. Voice guidance will now play for any step.", { force: true });
+      }
     }
   };
 
@@ -360,6 +389,15 @@ const RecipeDetail = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
+                className={`text-xs ${sequenceMode ? 'text-primary' : ''}`}
+                onClick={toggleSequenceMode}
+                title={sequenceMode ? "Sequence mode on" : "Sequence mode off"}
+              >
+                <ListOrdered size={16} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 className={`text-xs ${voiceEnabled ? 'text-primary' : ''}`}
                 onClick={toggleVoice}
               >
@@ -384,6 +422,7 @@ const RecipeDetail = () => {
                   remainingTime={index === activeStep ? remainingTime : step.timeInMinutes * 60}
                   onToggleVoice={toggleVoice}
                   voiceEnabled={voiceEnabled}
+                  sequenceMode={sequenceMode}
                 />
               ))}
           </div>
