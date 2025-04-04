@@ -64,18 +64,19 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				kusina: {
-					'brown': '#8B4513', 
-					'orange': '#FF7F50',
-					'green': '#556B2F',
-					'red': '#B22222',
-					'cream': '#FFF8DC',
-					'light': '#FDF5E6',
-					'gold': '#DAA520',
-					'purple': '#800080',  // Purple for festive elements
-					'teal': '#008080',    // Teal for accent elements
-					'magenta': '#C71585', // Magenta for festive accents
-					'yellow': '#FFD700',  // Bright yellow for festive elements
-					'blue': '#1E90FF'     // Blue for cool accents
+					'green': '#5A8C0F',     // Green from image: #5A8C0F
+					'orange': '#F28907',    // Orange from image: #F28907
+					'red': '#D90404',       // Red from image: #D90404
+					'maroon': '#590202',    // Deep red/maroon from image: #590202
+					'cream': '#F2F2F2',     // Light cream/white from image: #F2F2F2
+					'brown': '#8B4513',     // Keep the existing brown
+					'light': '#FDF5E6',     // Keep the existing light
+					'gold': '#DAA520',      // Keep the existing gold
+					'purple': '#800080',    // Keep the existing purple
+					'teal': '#008080',      // Keep the existing teal
+					'magenta': '#C71585',   // Keep the existing magenta
+					'yellow': '#FFD700',    // Keep the existing yellow
+					'blue': '#1E90FF'       // Keep the existing blue
 				}
 			},
 			borderRadius: {
