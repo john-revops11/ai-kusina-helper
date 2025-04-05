@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check, Plus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,6 +11,7 @@ export type Ingredient = {
   hasSubstitutions: boolean;
   isOptional?: boolean;
   recipeId?: string;
+  category?: string; // Added category property as optional
 };
 
 interface IngredientItemProps {
