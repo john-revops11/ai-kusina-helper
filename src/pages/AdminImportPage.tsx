@@ -12,7 +12,8 @@ import {
   Trash2,
   FileWarning,
   Download,
-  Wand2
+  Wand2,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -28,6 +29,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { convertToDownloadableJSON, recipeImportTemplate } from '@/data/mockData';
 import { aiJsonRepairService } from '@/services/aiJsonRepairService';
 import { aiProviderService } from '@/services/aiProviderService';
+import { Input } from '@/components/ui/input';
+import { searchRecipeOnline } from '@/services/recipeSearchService';
 
 type ImportedRecipe = {
   recipeName: string;
@@ -64,6 +67,8 @@ const AdminImportPage = () => {
   const [isDeduplicating, setIsDeduplicating] = useState(false);
   const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
   const [isFixingWithAI, setIsFixingWithAI] = useState(false);
+  const [recipePrompt, setRecipePrompt] = useState('');
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -381,6 +386,74 @@ const AdminImportPage = () => {
     }
   };
 
+  const handleGenerateRecipe = async () => {
+    if (!recipePrompt.trim()) {
+      toast("Please enter a recipe prompt first");
+      return;
+    }
+
+    setIsGeneratingRecipe(true);
+    
+    try {
+      const currentProvider = aiProviderService.getCurrentProvider();
+      toast(`Using ${currentProvider} to generate recipe for "${recipePrompt}"...`);
+      
+      const recipeResult = await searchRecipeOnline(recipePrompt);
+      
+      if (!recipeResult) {
+        toast.error("Failed to generate recipe", {
+          description: "Please try a different prompt"
+        });
+        return;
+      }
+      
+      const importFormat = transformToImportFormat(recipeResult);
+      
+      const jsonString = JSON.stringify(importFormat, null, 2);
+      setJsonData(jsonString);
+      validateJsonData(jsonString);
+      
+      toast.success(`Generated recipe for "${recipePrompt}"`, {
+        description: "You can now review and import the recipe"
+      });
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+      toast.error("Failed to generate recipe", {
+        description: (error as Error).message
+      });
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
+  const transformToImportFormat = (recipeResult: any) => {
+    const { recipe, ingredients, steps } = recipeResult;
+    
+    const mappedIngredients = ingredients.map((ing: any) => ({
+      ingredientName: ing.name,
+      quantity: ing.quantity,
+      unit: ing.unit || ""
+    }));
+    
+    const mappedSteps = steps.map((step: any) => step.instruction);
+    
+    const importedRecipe = {
+      recipeName: recipe.title,
+      description: recipe.description,
+      culture: "Filipino",
+      category: recipe.category,
+      prepTime: recipe.prepTime,
+      cookTime: recipe.cookTime,
+      difficulty: recipe.difficulty,
+      servings: recipe.servings,
+      imageUrl: recipe.imageUrl,
+      steps: mappedSteps,
+      ingredients: mappedIngredients
+    };
+    
+    return [importedRecipe];
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-3xl pb-20">
       <Link to="/admin" className="flex items-center gap-1 mb-4 text-sm text-muted-foreground hover:text-foreground">
@@ -397,6 +470,44 @@ const AdminImportPage = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
+          <div className="bg-muted/50 p-4 rounded-lg border border-muted">
+            <h3 className="text-sm font-medium mb-2">Generate Recipe with AI</h3>
+            <div className="space-y-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="recipePrompt">Enter recipe name or description:</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="recipePrompt"
+                    value={recipePrompt}
+                    onChange={(e) => setRecipePrompt(e.target.value)}
+                    placeholder="e.g., Chicken Adobo, Sinigang, Pancit Canton..."
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleGenerateRecipe}
+                    disabled={isGeneratingRecipe || !recipePrompt.trim()}
+                    className="whitespace-nowrap"
+                  >
+                    {isGeneratingRecipe ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Generate Recipe
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Generate Filipino recipe JSON data using AI that's ready to import into the database.
+              </p>
+            </div>
+          </div>
+          
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">Template</h3>
             <div className="flex gap-2">
