@@ -1,4 +1,3 @@
-
 import { database, ref, set } from './firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { Recipe } from '@/components/RecipeCard';
@@ -149,29 +148,23 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       return null;
     }
     
-    // Try to clean and parse the response
+    // Try to extract and clean JSON from the response
     try {
-      // Parse the JSON response - this might throw if JSON is invalid
+      // Extract only the JSON part from the response (ignoring any explanatory text)
+      let jsonContent = extractJsonFromResponse(aiResponse);
+      if (!jsonContent) {
+        console.error("Could not extract valid JSON from response");
+        toast.error("AI response did not contain valid JSON");
+        return null;
+      }
+      
+      // Parse the extracted JSON
       let recipeData;
       try {
-        recipeData = JSON.parse(aiResponse);
+        recipeData = JSON.parse(jsonContent);
       } catch (parseError) {
-        console.error("Error parsing initial JSON response:", parseError);
-        
-        // Try extracting JSON from the response
-        if (aiResponse.includes('{') && aiResponse.includes('}')) {
-          const jsonStart = aiResponse.indexOf('{');
-          const jsonEnd = aiResponse.lastIndexOf('}') + 1;
-          const jsonString = aiResponse.substring(jsonStart, jsonEnd);
-          recipeData = JSON.parse(jsonString);
-        } else if (aiResponse.includes('[') && aiResponse.includes(']')) {
-          const jsonStart = aiResponse.indexOf('[');
-          const jsonEnd = aiResponse.lastIndexOf(']') + 1;
-          const jsonString = aiResponse.substring(jsonStart, jsonEnd);
-          recipeData = JSON.parse(jsonString);
-        } else {
-          throw new Error("Could not extract valid JSON from response");
-        }
+        console.error("Error parsing JSON content:", parseError);
+        throw new Error("Could not parse extracted JSON content");
       }
       
       // Check if the recipeData is an array of recipe objects that match the import format
@@ -365,6 +358,41 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
   }
 };
 
+/**
+ * Extract JSON from AI response which might contain markdown or extra text
+ * @param response The AI response text
+ * @returns The extracted JSON string or null if no JSON found
+ */
+function extractJsonFromResponse(response: string): string | null {
+  // Try to find JSON array in the response
+  const arrayMatch = response.match(/\[\s*{[\s\S]*}\s*\]/);
+  if (arrayMatch) {
+    return arrayMatch[0];
+  }
+  
+  // If no array found, look for a JSON object
+  const objectMatch = response.match(/{[\s\S]*}/);
+  if (objectMatch) {
+    // Wrap the object in an array
+    return `[${objectMatch[0]}]`;
+  }
+  
+  // Look for code block content (markdown format)
+  const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    const codeContent = codeBlockMatch[1].trim();
+    // Check if the extracted code content is JSON
+    try {
+      JSON.parse(codeContent);
+      return codeContent;
+    } catch (e) {
+      // Not valid JSON, continue with other extraction methods
+    }
+  }
+  
+  return null;
+}
+
 // Save a new recipe to the database
 export const saveRecipeToDatabase = async (
   recipe: Recipe & {
@@ -421,4 +449,43 @@ export const saveRecipeToDatabase = async (
     console.error('Error saving recipe to database:', error);
     return false;
   }
+};
+
+/**
+ * Builds an enhanced recipe generation prompt
+ * @param basePrompt User's recipe prompt
+ * @param count Number of recipes to generate
+ * @param category Recipe category
+ * @returns Enhanced prompt for AI
+ */
+export const buildRecipeGenerationPrompt = (basePrompt: string, count: number, category: string): string => {
+  let prompt = `Create ${count === 1 ? 'a detailed' : count} authentic Filipino ${category !== 'All' ? category.toLowerCase() : ''} recipe${count > 1 ? 's' : ''}`;
+  
+  if (basePrompt) {
+    prompt += ` for ${basePrompt}`;
+  }
+  
+  prompt += `. Return ONLY a valid JSON array with exactly ${count} recipe${count > 1 ? 's' : ''} and no additional text or explanation. Each recipe should follow this format:
+[
+  {
+    "recipeName": "Full Recipe Name",
+    "description": "Detailed description with cultural context",
+    "culture": "Filipino",
+    "category": "${category !== 'All' ? category : '[Appropriate category]'}",
+    "ingredients": [
+      {
+        "ingredientName": "Ingredient name",
+        "quantity": "Amount",
+        "unit": "Unit of measurement"
+      }
+    ],
+    "steps": [
+      "Step 1 instruction",
+      "Step 2 instruction"
+    ]
+  }
+]
+Include at least 5-8 ingredients per recipe and 5-8 detailed cooking steps. Each recipe should have authentic Filipino flavors and techniques. Provide only the JSON array with no additional text.`;
+
+  return prompt;
 };

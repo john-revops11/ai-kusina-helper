@@ -26,51 +26,71 @@ export class RecipeDiscoveryAgent implements AgentInterface {
         };
       }
       
-      // First, check if the recipe exists in the local database
-      console.log(`Searching for recipe: ${recipeQuery}`);
-      const localRecipes = await fetchRecipes();
+      // Check if this is a structured prompt for recipe generation
+      const isStructuredPrompt = request.toLowerCase().includes('json') || 
+                               request.includes('[') && request.includes(']') ||
+                               request.toLowerCase().includes('generate') && 
+                               request.toLowerCase().includes('recipe');
       
-      // Filter recipes that match the query (case insensitive partial match)
-      const matchingRecipes = localRecipes.filter(recipe => 
-        recipe.title.toLowerCase().includes(recipeQuery.toLowerCase())
-      );
-      
-      // If we found matches in the local database
-      if (matchingRecipes.length > 0) {
-        const bestMatch = matchingRecipes[0]; // Take the first match for now
+      // First, check if the recipe exists in the local database (unless it's a structured prompt)
+      if (!isStructuredPrompt) {
+        console.log(`Searching for recipe: ${recipeQuery}`);
+        const localRecipes = await fetchRecipes();
         
-        // Get full recipe details
-        const recipeDetails = await fetchRecipeById(bestMatch.id);
+        // Filter recipes that match the query (case insensitive partial match)
+        const matchingRecipes = localRecipes.filter(recipe => 
+          recipe.title.toLowerCase().includes(recipeQuery.toLowerCase())
+        );
         
-        if (recipeDetails) {
-          return {
-            message: `I found the recipe for ${recipeDetails.title} in our collection.`,
-            data: recipeDetails,
-            suggestedActions: [
-              {
-                type: 'viewRecipe',
-                label: 'View Recipe',
-                value: recipeDetails.id
-              },
-              {
-                type: 'startCooking',
-                label: 'Start Cooking',
-                value: recipeDetails.id
-              }
-            ],
-            source: 'database',
-            success: true
-          };
+        // If we found matches in the local database
+        if (matchingRecipes.length > 0) {
+          const bestMatch = matchingRecipes[0]; // Take the first match for now
+          
+          // Get full recipe details
+          const recipeDetails = await fetchRecipeById(bestMatch.id);
+          
+          if (recipeDetails) {
+            return {
+              message: `I found the recipe for ${recipeDetails.title} in our collection.`,
+              data: recipeDetails,
+              suggestedActions: [
+                {
+                  type: 'viewRecipe',
+                  label: 'View Recipe',
+                  value: recipeDetails.id
+                },
+                {
+                  type: 'startCooking',
+                  label: 'Start Cooking',
+                  value: recipeDetails.id
+                }
+              ],
+              source: 'database',
+              success: true
+            };
+          }
         }
       }
       
-      // If we didn't find a match locally, search online via AI
+      // If we didn't find a match locally or if it's a structured prompt, search online via AI
       console.log(`No local match found for ${recipeQuery}, searching online...`);
       toast(`Searching for "${recipeQuery}" recipe online...`);
       
       const onlineResult = await searchRecipeOnline(recipeQuery);
       
       if (onlineResult) {
+        // Check if the result is in the import format (array of recipes)
+        if (Array.isArray(onlineResult)) {
+          return {
+            message: `I found ${onlineResult.length} recipes based on your request. You can view them in the import section.`,
+            data: onlineResult,
+            suggestedActions: [],
+            source: 'ai',
+            success: true
+          };
+        }
+        
+        // Handle standard recipe format
         // Save the recipe to the database for future use
         const saveResult = await saveRecipeToDatabase(
           onlineResult.recipe, 

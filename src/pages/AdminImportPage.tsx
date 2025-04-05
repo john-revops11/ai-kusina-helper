@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -13,7 +14,6 @@ import {
   FileWarning,
   Download,
   Wand2,
-  Search,
   Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ import { convertToDownloadableJSON, recipeImportTemplate } from '@/data/mockData
 import { aiJsonRepairService } from '@/services/aiJsonRepairService';
 import { aiProviderService } from '@/services/aiProviderService';
 import { Input } from '@/components/ui/input';
-import { searchRecipeOnline } from '@/services/recipeSearchService';
+import { searchRecipeOnline, buildRecipeGenerationPrompt } from '@/services/recipeSearchService';
 import { 
   Select,
   SelectContent,
