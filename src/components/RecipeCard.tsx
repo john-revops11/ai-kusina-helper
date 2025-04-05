@@ -38,8 +38,12 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onClick }) => {
       </div>
       <div className="p-4 border-t-0 border-2 border-kusina-cream rounded-b-lg bg-gradient-to-b from-white to-kusina-light-green/30">
         <h3 className="font-bold text-kusina-green line-clamp-2 min-h-[3rem]">
-          <span className="font-baybayin tracking-wide mr-1">{recipe.title.charAt(0)}</span>
-          <span className="text-base md:text-lg break-words">{recipe.title.slice(1)}</span>
+          {recipe.title && (
+            <>
+              <span className="font-baybayin tracking-wide">{recipe.title.charAt(0)}</span>
+              <span className="text-base md:text-lg break-words">{recipe.title.slice(1)}</span>
+            </>
+          )}
         </h3>
         <div className="flex justify-between mt-2 text-xs md:text-sm text-kusina-green/80">
           <div className="flex items-center gap-1">
