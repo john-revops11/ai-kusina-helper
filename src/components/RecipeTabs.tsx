@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -136,21 +135,13 @@ const RecipeTabs: React.FC<RecipeTabsProps> = ({
                 voiceEnabled={voiceEnabled}
                 sequenceMode={sequenceMode}
                 onPlayVoiceInstruction={playVoiceInstruction}
+                onMarkComplete={markStepComplete}
               />
             ))}
         </div>
         
         <div className="flex flex-col gap-2 mt-4">
-          {activeStep < steps.length && (
-            <Button 
-              className="w-full" 
-              onClick={() => markStepComplete(steps[activeStep].id)}
-            >
-              {activeStep === steps.length - 1 ? 'Finish Recipe' : 'Mark Step Complete'}
-            </Button>
-          )}
-          
-          {activeStep > 0 || Object.keys(completedSteps).length > 0 ? (
+          {activeStep === steps.length && (
             <Button 
               variant="outline"
               className="w-full" 
@@ -158,7 +149,7 @@ const RecipeTabs: React.FC<RecipeTabsProps> = ({
             >
               <RefreshCw size={16} className="mr-2" /> Restart Cooking
             </Button>
-          ) : null}
+          )}
         </div>
       </TabsContent>
       

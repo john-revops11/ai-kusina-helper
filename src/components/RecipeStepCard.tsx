@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, RefreshCw, PlayCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, RefreshCw, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import voiceService from '@/services/voiceService';
 
@@ -28,6 +28,7 @@ interface RecipeStepCardProps {
   voiceEnabled: boolean;
   sequenceMode?: boolean;
   onPlayVoiceInstruction?: (step: RecipeStep) => void;
+  onMarkComplete?: (stepId: string) => void;
 }
 
 const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
@@ -42,7 +43,8 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   onToggleVoice,
   voiceEnabled,
   sequenceMode = false,
-  onPlayVoiceInstruction
+  onPlayVoiceInstruction,
+  onMarkComplete
 }) => {
   const [hasSpokenThisSession, setHasSpokenThisSession] = useState(false);
 
@@ -96,6 +98,12 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   };
 
   const canPlayVoice = voiceEnabled && (!sequenceMode || (sequenceMode && step.number <= voiceService.lastSpokenStep + 1));
+
+  const handleMarkComplete = () => {
+    if (onMarkComplete) {
+      onMarkComplete(step.id);
+    }
+  };
 
   return (
     <Card className={`mb-4 transition-all duration-300 ${isActive ? 'ring-2 ring-primary' : ''} ${isCompleted ? 'opacity-60' : ''}`}>
@@ -201,6 +209,19 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
           </div>
         )}
       </CardContent>
+
+      <CardFooter className="px-4 py-3 border-t">
+        <Button 
+          variant={isCompleted ? "secondary" : "default"} 
+          size="sm" 
+          className="w-full gap-2"
+          onClick={handleMarkComplete}
+          disabled={isCompleted}
+        >
+          <CheckCircle2 size={16} />
+          {isCompleted ? "Completed" : "Mark as Done"}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };
