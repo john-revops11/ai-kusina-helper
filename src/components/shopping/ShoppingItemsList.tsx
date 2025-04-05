@@ -31,7 +31,7 @@ const ShoppingItemsList: React.FC<ShoppingItemsListProps> = ({
   const sortedCategories = Object.keys(groupedItems).sort();
 
   // Calculate appropriate height based on device
-  const scrollHeight = isMobile ? "h-[calc(100vh-330px)]" : "h-[calc(100vh-300px)]";
+  const scrollHeight = isMobile ? "h-[calc(100vh-350px)]" : "h-[calc(100vh-320px)]";
 
   return (
     <ScrollArea className={scrollHeight}>
@@ -43,8 +43,8 @@ const ShoppingItemsList: React.FC<ShoppingItemsListProps> = ({
       ) : (
         <div className="space-y-4 pr-2">
           {sortedCategories.map(category => (
-            <div key={category} className="mb-4">
-              <h2 className="font-medium text-xs md:text-sm text-muted-foreground mb-2 sticky top-0 bg-background/95 backdrop-blur-sm py-1">
+            <div key={category} className="mb-5">
+              <h2 className="font-medium text-xs md:text-sm text-muted-foreground mb-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10">
                 {category}
               </h2>
               <ul className="space-y-2">

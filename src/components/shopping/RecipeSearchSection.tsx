@@ -2,6 +2,7 @@
 import React from 'react';
 import EnhancedSearchBar from '@/components/EnhancedSearchBar';
 import type { Recipe } from '@/components/RecipeCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface RecipeSearchSectionProps {
   onSelectRecipe: (recipe: Recipe) => void;
@@ -14,13 +15,17 @@ const RecipeSearchSection: React.FC<RecipeSearchSectionProps> = ({
   recipes,
   isLoadingRecipes 
 }) => {
+  const isMobile = useIsMobile();
+  
   // These functions are required by the EnhancedSearchBar but not used in this context
   const handleSearch = () => {};
   const handleExternalSearch = () => {};
 
   return (
-    <div className="space-y-2">
-      <h2 className="text-sm md:text-base font-medium text-kusina-green">Add ingredients from recipe</h2>
+    <div className="space-y-2 md:space-y-3">
+      <h2 className={`${isMobile ? "text-sm" : "text-base"} font-medium text-kusina-green`}>
+        Add ingredients from recipe
+      </h2>
       <EnhancedSearchBar
         onSearch={handleSearch}
         onSelectRecipe={onSelectRecipe}

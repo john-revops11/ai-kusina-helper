@@ -46,7 +46,7 @@ const ShoppingListPage = () => {
   const checkedItems = shoppingList.filter(item => item.checked).length;
 
   return (
-    <div className="pb-20 md:pb-10 min-h-screen">
+    <div className="pb-20 md:pb-10 min-h-screen bg-background">
       {/* Header */}
       <ShoppingListHeader 
         totalItems={totalItems} 
@@ -64,7 +64,7 @@ const ShoppingListPage = () => {
         />
 
         {/* Divider */}
-        <div className="relative">
+        <div className="relative py-1">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>

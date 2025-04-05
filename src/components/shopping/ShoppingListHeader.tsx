@@ -19,15 +19,15 @@ const ShoppingListHeader: React.FC<ShoppingListHeaderProps> = ({
 
   return (
     <header className="p-4 md:p-6 border-b">
-      <h1 className="text-xl md:text-2xl font-bold text-kusina-green">Shopping List</h1>
-      <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
-        <Badge variant="outline" className={`${isMobile ? "text-xs" : "text-sm"} whitespace-nowrap`}>
+      <h1 className="text-xl md:text-2xl font-bold text-kusina-green mb-2">Shopping List</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Badge variant="outline" className={`${isMobile ? "text-xs" : "text-sm"} py-1 px-2 whitespace-nowrap`}>
           {checkedItems} of {totalItems} items checked
         </Badge>
         <Button 
           variant="ghost" 
           size={isMobile ? "sm" : "default"}
-          className="text-xs md:text-sm text-muted-foreground"
+          className="text-xs md:text-sm text-muted-foreground h-8 md:h-9"
           onClick={() => {
             if (checkedItems > 0 && confirm('Remove all checked items?')) {
               onClearChecked();

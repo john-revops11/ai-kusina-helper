@@ -31,20 +31,20 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
   };
 
   return (
-    <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-2`}>
+    <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-3`}>
       <div className="flex flex-1 gap-2">
         <Input 
           placeholder="Add item..." 
           value={newItemName}
           onChange={e => setNewItemName(e.target.value)}
-          className="flex-1"
+          className="flex-1 h-9 md:h-10"
           onKeyPress={handleKeyPress}
         />
         <Input
           placeholder="Qty"
           value={newItemQuantity}
           onChange={e => setNewItemQuantity(e.target.value)}
-          className={`${isMobile ? 'w-20' : 'w-16'}`}
+          className={`${isMobile ? 'w-24' : 'w-20'} h-9 md:h-10`}
           onKeyPress={handleKeyPress}
         />
       </div>
@@ -53,16 +53,16 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
           placeholder="Unit"
           value={newItemUnit}
           onChange={e => setNewItemUnit(e.target.value)}
-          className={`${isMobile ? 'flex-1' : 'w-24'}`}
+          className={`${isMobile ? 'flex-1' : 'w-28'} h-9 md:h-10`}
           onKeyPress={handleKeyPress}
         />
         <Button 
-          size="icon" 
+          size={isMobile ? "sm" : "default"}
           onClick={handleAddItem}
           disabled={!newItemName.trim()}
-          className="shrink-0"
+          className="shrink-0 h-9 md:h-10"
         >
-          <Plus size={16} />
+          <Plus size={isMobile ? 14 : 16} />
         </Button>
       </div>
     </div>
