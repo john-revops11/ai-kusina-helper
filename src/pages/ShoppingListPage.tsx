@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import EnhancedSearchBar from '@/components/EnhancedSearchBar';
 import { v4 as uuidv4 } from 'uuid';
 import type { Recipe } from '@/components/RecipeCard';
+import type { Ingredient } from '@/components/IngredientItem';
 
 type ShoppingItem = {
   id: string;
@@ -120,7 +121,7 @@ const ShoppingListPage = () => {
           quantity: ingredient.quantity,
           unit: ingredient.unit || '',
           checked: false,
-          category: ingredient.category || 'Other',
+          category: ingredient.category || 'Other', // Use a default category if not available
           recipeId: recipe.id,
           recipeName: recipe.title,
         };
