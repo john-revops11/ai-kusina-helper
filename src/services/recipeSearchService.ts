@@ -57,13 +57,19 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
   };
   ingredients: Ingredient[];
   steps: RecipeStep[];
-} | null> => {
+} | any> => {
   try {
     // Generate a unique ID for the new recipe
     const recipeId = uuidv4();
     
+    // The request is either a simple recipe name or a full prompt
+    const isFullPrompt = recipeName.toLowerCase().includes('json') || 
+                        (recipeName.includes('[') && recipeName.includes(']'));
+    
     // Create the prompt for AI - ensure we're asking for JSON
-    const prompt = `Please provide a detailed Filipino recipe for "${recipeName}". Return the result as a JSON array of recipe objects with the following format:
+    const prompt = isFullPrompt 
+      ? recipeName 
+      : `Please provide a detailed Filipino recipe for "${recipeName}". Return the result as a JSON array of recipe objects with the following format:
 [
   {
     "recipeName": "Full Recipe Name",
@@ -89,7 +95,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     const currentProvider = aiProviderService.getCurrentProvider();
     
     // Call the appropriate AI service based on the provider
-    toast(`Searching for "${recipeName}" recipe...`, {
+    toast(`Searching for recipes...`, {
       description: `Connecting to ${currentProvider.toUpperCase()} service`
     });
     
@@ -137,8 +143,8 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
     if (aiResponse.startsWith("I'm sorry") || 
         aiResponse.includes("Recipe Not Available") || 
         aiResponse.includes("Recipe Unavailable")) {
-      toast.error(`Could not find recipe for "${recipeName}"`, {
-        description: "Try a different recipe or try again later"
+      toast.error(`Could not find recipe for the provided request`, {
+        description: "Try a different prompt or try again later"
       });
       return null;
     }
@@ -166,6 +172,17 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         } else {
           throw new Error("Could not extract valid JSON from response");
         }
+      }
+      
+      // Check if the recipeData is an array of recipe objects that match the import format
+      // This handles the case where the AI returns recipes in the import format directly
+      if (Array.isArray(recipeData) && 
+          recipeData.length > 0 && 
+          recipeData[0].recipeName &&
+          recipeData[0].ingredients &&
+          Array.isArray(recipeData[0].ingredients)) {
+        console.log("Received recipes in import format:", recipeData);
+        return recipeData;
       }
       
       // Validate the structure of the response
@@ -307,7 +324,7 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
       }
       
       // Verify we have minimum requirements
-      if (ingredients.length === 0 || steps.length === 0) {
+      if (ingredients && ingredients.length === 0 || steps && steps.length === 0) {
         console.error("Missing ingredients or steps:", { ingredients, steps });
         toast.error("Recipe is missing ingredients or steps", {
           description: "Please try searching for a different recipe"
@@ -321,8 +338,6 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         ingredients,
         steps
       });
-      
-      toast.success(`Found recipe for ${recipe.title}!`);
       
       return {
         recipe,

@@ -13,7 +13,8 @@ import {
   FileWarning,
   Download,
   Wand2,
-  Search
+  Search,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -31,6 +32,14 @@ import { aiJsonRepairService } from '@/services/aiJsonRepairService';
 import { aiProviderService } from '@/services/aiProviderService';
 import { Input } from '@/components/ui/input';
 import { searchRecipeOnline } from '@/services/recipeSearchService';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ImportedRecipe = {
   recipeName: string;
@@ -69,6 +78,9 @@ const AdminImportPage = () => {
   const [isFixingWithAI, setIsFixingWithAI] = useState(false);
   const [recipePrompt, setRecipePrompt] = useState('');
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [recipeCount, setRecipeCount] = useState(1);
+  const [activeTab, setActiveTab] = useState('file');
+  const [recipeCategory, setRecipeCategory] = useState('All');
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -388,7 +400,7 @@ const AdminImportPage = () => {
 
   const handleGenerateRecipe = async () => {
     if (!recipePrompt.trim()) {
-      toast("Please enter a recipe prompt first");
+      toast.error("Please enter a recipe prompt first");
       return;
     }
 
@@ -396,37 +408,94 @@ const AdminImportPage = () => {
     
     try {
       const currentProvider = aiProviderService.getCurrentProvider();
-      toast(`Using ${currentProvider} to generate recipe for "${recipePrompt}"...`);
+      toast(`Using ${currentProvider} to generate ${recipeCount > 1 ? recipeCount + ' recipes' : 'a recipe'}...`);
       
-      const recipeResult = await searchRecipeOnline(recipePrompt);
+      const enhancedPrompt = buildRecipeGenerationPrompt(recipePrompt, recipeCount, recipeCategory);
+      
+      const recipeResult = await generateRecipesFromPrompt(enhancedPrompt);
       
       if (!recipeResult) {
-        toast.error("Failed to generate recipe", {
+        toast.error("Failed to generate recipes", {
           description: "Please try a different prompt"
         });
         return;
       }
       
-      const importFormat = transformToImportFormat(recipeResult);
-      
-      const jsonString = JSON.stringify(importFormat, null, 2);
+      const jsonString = JSON.stringify(recipeResult, null, 2);
       setJsonData(jsonString);
       validateJsonData(jsonString);
       
-      toast.success(`Generated recipe for "${recipePrompt}"`, {
-        description: "You can now review and import the recipe"
+      toast.success(`Generated ${recipeResult.length} ${recipeResult.length > 1 ? 'recipes' : 'recipe'}`, {
+        description: "You can now review and import the recipes"
       });
     } catch (error) {
-      console.error("Error generating recipe:", error);
-      toast.error("Failed to generate recipe", {
+      console.error("Error generating recipes:", error);
+      toast.error("Failed to generate recipes", {
         description: (error as Error).message
       });
     } finally {
       setIsGeneratingRecipe(false);
     }
   };
+  
+  const buildRecipeGenerationPrompt = (basePrompt: string, count: number, category: string): string => {
+    let prompt = `Create ${count === 1 ? 'a detailed' : count} authentic Filipino ${category !== 'All' ? category.toLowerCase() : ''} recipe${count > 1 ? 's' : ''}`;
+    
+    if (basePrompt) {
+      prompt += ` for ${basePrompt}`;
+    }
+    
+    prompt += `. The response should be a valid JSON array with the following structure for each recipe:
+[
+  {
+    "recipeName": "Full Recipe Name",
+    "description": "Detailed description with cultural context",
+    "culture": "Filipino",
+    "category": "${category !== 'All' ? category : '[Appropriate category]'}",
+    "ingredients": [
+      {
+        "ingredientName": "Ingredient name",
+        "quantity": "Amount",
+        "unit": "Unit of measurement"
+      }
+    ],
+    "steps": [
+      "Step 1 instruction",
+      "Step 2 instruction"
+    ]
+  }
+]
+Make sure to include at least 4-8 ingredients per recipe and 4-6 detailed cooking steps. Each recipe should have authentic Filipino flavors and techniques.`;
+
+    return prompt;
+  };
+  
+  const generateRecipesFromPrompt = async (prompt: string) => {
+    const currentProvider = aiProviderService.getCurrentProvider();
+    
+    try {
+      const recipe = await searchRecipeOnline(prompt);
+      
+      if (!recipe) {
+        return null;
+      }
+      
+      if (!Array.isArray(recipe)) {
+        return [transformToImportFormat(recipe)];
+      }
+      
+      return recipe.map(r => transformToImportFormat(r));
+    } catch (error) {
+      console.error("Error in generateRecipesFromPrompt:", error);
+      throw error;
+    }
+  };
 
   const transformToImportFormat = (recipeResult: any) => {
+    if (recipeResult.recipeName) {
+      return recipeResult;
+    }
+    
     const { recipe, ingredients, steps } = recipeResult;
     
     const mappedIngredients = ingredients.map((ing: any) => ({
@@ -451,7 +520,7 @@ const AdminImportPage = () => {
       ingredients: mappedIngredients
     };
     
-    return [importedRecipe];
+    return importedRecipe;
   };
 
   return (
@@ -470,74 +539,143 @@ const AdminImportPage = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          <div className="bg-muted/50 p-4 rounded-lg border border-muted">
-            <h3 className="text-sm font-medium mb-2">Generate Recipe with AI</h3>
-            <div className="space-y-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="recipePrompt">Enter recipe name or description:</Label>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="generate">Generate with AI</TabsTrigger>
+              <TabsTrigger value="file">File Upload</TabsTrigger>
+              <TabsTrigger value="template">Template</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="generate" className="space-y-4 pt-4">
+              <div className="bg-muted/50 p-4 rounded-lg border border-muted">
+                <h3 className="text-sm font-medium mb-3">Generate Recipe with AI</h3>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="recipeCount">Number of Recipes:</Label>
+                        <Select
+                          value={recipeCount.toString()}
+                          onValueChange={(value) => setRecipeCount(parseInt(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="1" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 5, 10].map((num) => (
+                              <SelectItem key={num} value={num.toString()}>
+                                {num}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="recipeCategory">Category:</Label>
+                        <Select
+                          value={recipeCategory}
+                          onValueChange={setRecipeCategory}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="All" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="All">All Categories</SelectItem>
+                            <SelectItem value="Main Dish">Main Dish</SelectItem>
+                            <SelectItem value="Dessert">Dessert</SelectItem>
+                            <SelectItem value="Appetizer">Appetizer</SelectItem>
+                            <SelectItem value="Soup">Soup</SelectItem>
+                            <SelectItem value="Beverage">Beverage</SelectItem>
+                            <SelectItem value="Side Dish">Side Dish</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="recipePrompt">Recipe Prompt:</Label>
+                      <Textarea
+                        id="recipePrompt"
+                        value={recipePrompt}
+                        onChange={(e) => setRecipePrompt(e.target.value)}
+                        placeholder="e.g., traditional adobo variations, holiday desserts, street food favorites..."
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={handleGenerateRecipe}
+                      disabled={isGeneratingRecipe}
+                      className="w-full"
+                    >
+                      {isGeneratingRecipe ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating Recipes...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generate {recipeCount > 1 ? `${recipeCount} Recipes` : 'Recipe'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use AI to generate Filipino recipes that are ready to import into your database. Be specific with your prompt to get better results.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="file" className="space-y-4 pt-4">
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="outline" className="w-full relative">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Upload JSON File
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Upload a JSON file containing your recipe data in the expected format.
+              </p>
+            </TabsContent>
+            
+            <TabsContent value="template" className="space-y-4 pt-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Recipe Template</h3>
                 <div className="flex gap-2">
-                  <Input
-                    id="recipePrompt"
-                    value={recipePrompt}
-                    onChange={(e) => setRecipePrompt(e.target.value)}
-                    placeholder="e.g., Chicken Adobo, Sinigang, Pancit Canton..."
-                    className="flex-1"
-                  />
                   <Button 
-                    onClick={handleGenerateRecipe}
-                    disabled={isGeneratingRecipe || !recipePrompt.trim()}
-                    className="whitespace-nowrap"
+                    variant="outline" 
+                    size="sm" 
+                    onClick={downloadTemplate}
+                    disabled={isGeneratingTemplate}
+                    className="flex items-center gap-2"
                   >
-                    {isGeneratingRecipe ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Generate Recipe
-                      </>
-                    )}
+                    {isGeneratingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                    Download Template
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={fillWithTemplateData}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText size={14} />
+                    View Example
                   </Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Generate Filipino recipe JSON data using AI that's ready to import into the database.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium">Template</h3>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={downloadTemplate}
-                disabled={isGeneratingTemplate}
-                className="flex items-center gap-2"
-              >
-                {isGeneratingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                Download Template
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={fillWithTemplateData}
-                className="flex items-center gap-2"
-              >
-                <FileText size={14} />
-                View Example
-              </Button>
-            </div>
-          </div>
-          
-          <div className="bg-muted p-4 rounded-lg text-sm">
-            <p>This utility imports recipe data in bulk from a JSON file or pasted text.</p>
-            <p className="mt-2">Expected format:</p>
-            <pre className="mt-1 bg-muted/50 p-2 rounded text-xs overflow-auto">
-              {`[
+              <div className="bg-muted p-4 rounded-lg text-sm">
+                <p>This utility imports recipe data in bulk from a JSON file or pasted text.</p>
+                <p className="mt-2">Expected format:</p>
+                <pre className="mt-1 bg-muted/50 p-2 rounded text-xs overflow-auto">
+                  {`[
   {
     "recipeName": "Recipe Name",
     "description": "Description",
@@ -554,17 +692,19 @@ const AdminImportPage = () => {
     ]
   }
 ]`}
-            </pre>
-          </div>
+                </pre>
+              </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="space-y-2">
             <label htmlFor="jsonData" className="text-sm font-medium block">
-              Paste JSON data or upload a file:
+              Recipe JSON Data:
             </label>
             
             <Textarea
               id="jsonData"
-              placeholder="Paste your JSON recipe data here..."
+              placeholder="Paste your JSON recipe data here or use the options above..."
               value={jsonData}
               onChange={handleTextChange}
               className="font-mono text-sm min-h-[200px]"
@@ -572,19 +712,6 @@ const AdminImportPage = () => {
             
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleFileUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <Button variant="outline" className="relative">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Upload JSON File
-                  </Button>
-                </div>
-                
                 {validationResult && !validationResult.isValid && (
                   <Button
                     variant="outline"
