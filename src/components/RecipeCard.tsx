@@ -15,17 +15,19 @@ export type Recipe = {
 
 interface RecipeCardProps {
   recipe: Recipe;
+  onClick?: () => void;
 }
 
-const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onClick }) => {
   const difficultyColor = {
     Easy: 'bg-kusina-green text-white',
     Medium: 'bg-kusina-orange text-white',
     Hard: 'bg-kusina-red text-white'
   };
 
-  return (
-    <Link to={`/recipe/${recipe.id}`} className="recipe-card block transform hover:-translate-y-1 transition-all duration-300">
+  // Wrap with Link only if onClick is not provided
+  const CardContent = () => (
+    <>
       <div className="relative overflow-hidden rounded-t-lg">
         <div className="overflow-hidden bg-kusina-light-green/30" style={{ height: '12rem' }}>
           {/* Placeholder div instead of image */}
@@ -50,6 +52,23 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <div 
+        className="recipe-card block transform hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+        onClick={onClick}
+      >
+        <CardContent />
+      </div>
+    );
+  }
+
+  return (
+    <Link to={`/recipe/${recipe.id}`} className="recipe-card block transform hover:-translate-y-1 transition-all duration-300">
+      <CardContent />
     </Link>
   );
 };
