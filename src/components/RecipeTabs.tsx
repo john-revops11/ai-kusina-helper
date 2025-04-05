@@ -7,7 +7,7 @@ import RecipeStepCard from './RecipeStepCard';
 import IngredientItem from './IngredientItem';
 import { RecipeStep } from './RecipeStepCard';
 import { Ingredient } from './IngredientItem';
-import { Volume2, VolumeX, RefreshCw, ListOrdered } from 'lucide-react';
+import { Volume2, VolumeX, RefreshCw, ListOrdered, PlayCircle } from 'lucide-react';
 
 interface RecipeTabsProps {
   ingredients: Ingredient[];
@@ -31,6 +31,7 @@ interface RecipeTabsProps {
   toggleSequenceMode: () => void;
   sequenceMode: boolean;
   onAddToList?: (ingredient: Ingredient) => void;
+  playVoiceInstruction?: (step: RecipeStep) => void;
 }
 
 const RecipeTabs: React.FC<RecipeTabsProps> = ({
@@ -54,7 +55,8 @@ const RecipeTabs: React.FC<RecipeTabsProps> = ({
   voiceEnabled,
   toggleSequenceMode,
   sequenceMode,
-  onAddToList
+  onAddToList,
+  playVoiceInstruction
 }) => {
   return (
     <Tabs defaultValue="ingredients" className="w-full">
@@ -109,6 +111,7 @@ const RecipeTabs: React.FC<RecipeTabsProps> = ({
               size="sm" 
               className={`text-xs ${voiceEnabled ? 'text-primary' : ''}`}
               onClick={toggleVoice}
+              title={voiceEnabled ? "Voice enabled" : "Voice disabled"}
             >
               {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </Button>
@@ -132,6 +135,7 @@ const RecipeTabs: React.FC<RecipeTabsProps> = ({
                 onToggleVoice={toggleVoice}
                 voiceEnabled={voiceEnabled}
                 sequenceMode={sequenceMode}
+                onPlayVoiceInstruction={playVoiceInstruction}
               />
             ))}
         </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, RefreshCw, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import voiceService from '@/services/voiceService';
 
@@ -27,6 +27,7 @@ interface RecipeStepCardProps {
   onToggleVoice: () => void;
   voiceEnabled: boolean;
   sequenceMode?: boolean;
+  onPlayVoiceInstruction?: (step: RecipeStep) => void;
 }
 
 const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
@@ -41,12 +42,15 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   onToggleVoice,
   voiceEnabled,
   sequenceMode = false,
+  onPlayVoiceInstruction
 }) => {
+  const [hasSpokenThisSession, setHasSpokenThisSession] = useState(false);
+
   useEffect(() => {
-    // When a step becomes active and voice is enabled, read the instruction
-    if (isActive && voiceEnabled && !isCompleted) {
-      const announcement = `Step ${step.number}. ${step.instruction}`;
-      voiceService.speak(announcement, { stepNumber: step.number });
+    // No longer auto-play voice when step becomes active
+    // We'll use the play button instead
+    if (isActive && !isCompleted) {
+      // Just mark as active, don't auto-play
     }
   }, [isActive, step, voiceEnabled, isCompleted]);
 
@@ -74,13 +78,24 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   const handleToggleVoice = () => {
     onToggleVoice();
     
-    // If enabling voice, immediately request permission and speak the instruction
-    if (!voiceEnabled && isActive) {
-      const announcement = `Step ${step.number}. ${step.instruction}`;
-      // The force:true will ensure it speaks after permission is granted
-      voiceService.speak(announcement, { force: true, stepNumber: step.number });
+    // If enabling voice, immediately request permission but don't speak automatically
+    if (!voiceEnabled) {
+      // Just request permission but don't speak yet
+      voiceService.requestPermission();
     }
   };
+
+  const handlePlayVoiceInstruction = () => {
+    if (onPlayVoiceInstruction && voiceEnabled) {
+      onPlayVoiceInstruction(step);
+      setHasSpokenThisSession(true);
+    } else if (!voiceEnabled) {
+      // If voice is not enabled, inform the user
+      onToggleVoice(); // This will request permission
+    }
+  };
+
+  const canPlayVoice = voiceEnabled && (!sequenceMode || (sequenceMode && step.number <= voiceService.lastSpokenStep + 1));
 
   return (
     <Card className={`mb-4 transition-all duration-300 ${isActive ? 'ring-2 ring-primary' : ''} ${isCompleted ? 'opacity-60' : ''}`}>
@@ -96,15 +111,35 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
             {sequenceMode && step.number <= voiceService.lastSpokenStep && (
               <Badge variant="secondary" className="text-xs">Spoken</Badge>
             )}
+            {hasSpokenThisSession && !sequenceMode && (
+              <Badge variant="secondary" className="text-xs">Played</Badge>
+            )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggleVoice}
-            className="h-8 w-8"
-          >
-            {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          </Button>
+          <div className="flex items-center gap-1">
+            {/* Play button for voice instruction */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Play voice instruction"
+              onClick={handlePlayVoiceInstruction}
+              disabled={!canPlayVoice}
+              aria-label={canPlayVoice ? "Play voice instruction" : "Voice instruction not available"}
+            >
+              <PlayCircle size={16} className={canPlayVoice ? "text-primary" : "text-muted-foreground"} />
+            </Button>
+            
+            {/* Toggle voice on/off */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleToggleVoice}
+              className="h-8 w-8"
+              title={voiceEnabled ? "Voice enabled" : "Voice disabled"}
+            >
+              {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </Button>
+          </div>
         </div>
 
         <p className="text-sm mb-3">{step.instruction}</p>

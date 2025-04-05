@@ -42,6 +42,11 @@ export const voiceService = {
   lastSpokenStep: 0,
   
   /**
+   * Currently playing audio element, if any
+   */
+  currentlyPlaying: null as HTMLAudioElement | null,
+  
+  /**
    * Set whether voice guidance is enabled
    */
   setEnabled(value: boolean) {
@@ -52,6 +57,7 @@ export const voiceService = {
     // Reset permission if voice is disabled
     if (!value) {
       this.permissionGranted = false;
+      this.stopAllAudio();
     }
   },
 
@@ -162,7 +168,7 @@ export const voiceService = {
       this.lastSpokenStep = options.stepNumber;
     }
     
-    // Request permission before speaking (if not forced)
+    // Request permission before speaking (if not forced and permission not granted)
     if (!this.permissionGranted && !options?.force) {
       const granted = await this.requestPermission();
       if (!granted) {
@@ -183,7 +189,15 @@ export const voiceService = {
       // Check cache first
       if (this.audioCache.has(cacheKey)) {
         const audioElement = this.audioCache.get(cacheKey);
-        audioElement?.play();
+        if (audioElement) {
+          this.currentlyPlaying = audioElement;
+          audioElement.play();
+          
+          // Set up event listener to clear currentlyPlaying when audio ends
+          audioElement.addEventListener('ended', () => {
+            this.currentlyPlaying = null;
+          }, { once: true });
+        }
         return;
       }
       
@@ -219,10 +233,20 @@ export const voiceService = {
       // Cache the audio element for future use
       this.audioCache.set(cacheKey, audioElement);
       
+      // Set up event listener to clear currentlyPlaying when audio ends
+      audioElement.addEventListener('ended', () => {
+        this.currentlyPlaying = null;
+      }, { once: true });
+      
+      // Store reference to current audio
+      this.currentlyPlaying = audioElement;
+      
       // Play the audio
       await audioElement.play();
     } catch (error) {
       console.error('Error generating speech:', error);
+      this.currentlyPlaying = null;
+      
       // Only show error toast if voice was explicitly requested (force=true)
       if (options?.force) {
         toast('Failed to generate speech', {
@@ -236,6 +260,14 @@ export const voiceService = {
    * Stop all currently playing audio
    */
   stopAllAudio() {
+    // Stop currently playing audio
+    if (this.currentlyPlaying) {
+      this.currentlyPlaying.pause();
+      this.currentlyPlaying.currentTime = 0;
+      this.currentlyPlaying = null;
+    }
+    
+    // Stop any other cached audio just in case
     this.audioCache.forEach(audio => {
       audio.pause();
       audio.currentTime = 0;

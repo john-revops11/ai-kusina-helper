@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -48,7 +47,6 @@ const RecipeDetailPage = () => {
   
   const timerRef = useRef<number | null>(null);
 
-  // Load recipe data
   useEffect(() => {
     const loadRecipeData = async () => {
       if (!id) return;
@@ -108,7 +106,6 @@ const RecipeDetailPage = () => {
     loadRecipeData();
   }, [id, toast, voiceEnabled]);
 
-  // Create new conversation
   useEffect(() => {
     if (recipe) {
       const newConversationId = agentOrchestrator.createNewConversation();
@@ -116,7 +113,6 @@ const RecipeDetailPage = () => {
     }
   }, [recipe]);
 
-  // Timer effect
   useEffect(() => {
     if (timerRunning && remainingTime > 0) {
       timerRef.current = window.setTimeout(() => {
@@ -228,11 +224,19 @@ const RecipeDetailPage = () => {
     setVoiceEnabled(newValue);
     voiceService.setEnabled(newValue);
     
-    if (newValue && steps.length > 0 && activeStep < steps.length) {
-      const currentStep = steps[activeStep];
-      voiceService.speak(`Voice guidance enabled. Current step ${currentStep.number}: ${currentStep.instruction}`, { force: true, stepNumber: currentStep.number });
-    } else if (!newValue) {
+    if (newValue) {
+      voiceService.requestPermission().then(granted => {
+        if (granted) {
+          toast({
+            description: "Voice guidance enabled. Click the play button next to a step to hear instructions.",
+          });
+        }
+      });
+    } else {
       voiceService.stopAllAudio();
+      toast({
+        description: "Voice guidance disabled.",
+      });
     }
   };
 
@@ -269,6 +273,37 @@ const RecipeDetailPage = () => {
     toast({
       description: `${ingredient.name} added to shopping list`
     });
+  };
+
+  const playVoiceInstruction = (step: RecipeStep) => {
+    if (voiceEnabled) {
+      if (!voiceService.permissionGranted) {
+        voiceService.requestPermission().then(granted => {
+          if (granted) {
+            const announcement = `Step ${step.number}. ${step.instruction}`;
+            voiceService.speak(announcement, { 
+              force: true, 
+              stepNumber: step.number 
+            });
+            
+            toast({
+              description: `Playing voice instruction for Step ${step.number}`
+            });
+          }
+        });
+      } else {
+        const announcement = `Step ${step.number}. ${step.instruction}`;
+        voiceService.speak(announcement, { stepNumber: step.number });
+        
+        toast({
+          description: `Playing voice instruction for Step ${step.number}`
+        });
+      }
+    } else {
+      toast({
+        description: "Voice guidance is disabled. Enable it to hear instructions.",
+      });
+    }
   };
 
   if (isLoading) {
@@ -323,7 +358,6 @@ const RecipeDetailPage = () => {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Tabs Component */}
         <RecipeTabs 
           ingredients={ingredients}
           steps={steps}
@@ -346,6 +380,7 @@ const RecipeDetailPage = () => {
           toggleSequenceMode={toggleSequenceMode}
           sequenceMode={sequenceMode}
           onAddToList={addToShoppingList}
+          playVoiceInstruction={playVoiceInstruction}
         />
 
         <div className="fixed bottom-20 right-4 z-40">
