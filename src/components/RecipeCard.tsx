@@ -27,16 +27,19 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
   return (
     <Link to={`/recipe/${recipe.id}`} className="recipe-card block transform hover:-translate-y-1 transition-all duration-300">
       <div className="relative overflow-hidden rounded-t-lg">
-        <div className="overflow-hidden bg-gray-300" style={{ height: '12rem' }}>
+        <div className="overflow-hidden bg-kusina-light-green/30" style={{ height: '12rem' }}>
           {/* Placeholder div instead of image */}
         </div>
         <Badge className={`absolute top-2 right-2 ${difficultyColor[recipe.difficulty]}`}>
           {recipe.difficulty}
         </Badge>
       </div>
-      <div className="p-4 border-t-0 border-2 border-kusina-cream rounded-b-lg bg-gradient-to-b from-white to-kusina-cream/30">
-        <h3 className="font-bold text-lg line-clamp-1 text-kusina-brown">{recipe.title}</h3>
-        <div className="flex justify-between mt-2 text-sm text-kusina-brown/70">
+      <div className="p-4 border-t-0 border-2 border-kusina-cream rounded-b-lg bg-gradient-to-b from-white to-kusina-light-green/30">
+        <h3 className="font-bold text-lg line-clamp-1 text-kusina-green">
+          <span className="font-baybayin tracking-wide mr-1">{recipe.title.charAt(0)}</span>
+          {recipe.title.slice(1)}
+        </h3>
+        <div className="flex justify-between mt-2 text-sm text-kusina-green/80">
           <div className="flex items-center gap-1">
             <Clock size={14} className="text-kusina-orange" />
             <span>{recipe.prepTime}</span>

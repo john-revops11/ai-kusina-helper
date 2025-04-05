@@ -12,10 +12,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em #5A8C0Faa);
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em #5A8C0Faa);
 }
 
 @keyframes logo-spin {
@@ -39,4 +39,23 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Baybayin accent elements */
+.baybayin-accent::before {
+  content: "ᜊ";
+  font-family: 'Baybayin Modern', sans-serif;
+  color: #5A8C0F;
+  margin-right: 0.25rem;
+}
+
+.baybayin-accent::after {
+  content: "ᜌ";
+  font-family: 'Baybayin Modern', sans-serif;
+  color: #5A8C0F;
+  margin-left: 0.25rem;
+}
+
+.leaf-animation {
+  animation: leaf-sway 5s ease-in-out infinite;
 }
