@@ -1,3 +1,4 @@
+
 import { database, ref, set } from './firebase';
 import { v4 as uuidv4 } from 'uuid';
 import { Recipe } from '@/components/RecipeCard';
@@ -158,10 +159,14 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
         return null;
       }
       
-      // Parse the extracted JSON
+      // Clean the JSON string to handle any potential issues
+      jsonContent = cleanJsonString(jsonContent);
+      
+      // Parse the cleaned JSON
       let recipeData;
       try {
         recipeData = JSON.parse(jsonContent);
+        console.log("Successfully parsed recipe data:", recipeData);
       } catch (parseError) {
         console.error("Error parsing JSON content:", parseError);
         throw new Error("Could not parse extracted JSON content");
@@ -359,19 +364,69 @@ export const searchRecipeOnline = async (recipeName: string): Promise<{
 };
 
 /**
+ * Cleans a JSON string to make it more parsable
+ * @param jsonString The JSON string to clean
+ * @returns A cleaned JSON string
+ */
+function cleanJsonString(jsonString: string): string {
+  // Trim leading/trailing whitespace
+  let cleaned = jsonString.trim();
+  
+  // Remove any trailing commas before closing brackets or braces
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+  
+  // Handle any unescaped quotes within string values
+  cleaned = cleaned.replace(/([^\\])"/g, '$1\\"');
+  cleaned = cleaned.replace(/^"/, '\\"');
+  
+  // Add missing quotes around unquoted property names
+  cleaned = cleaned.replace(/(\{|\,)\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+  
+  // Handle loose characters that might be outside the JSON structure
+  const startBracket = cleaned.indexOf('[');
+  const startBrace = cleaned.indexOf('{');
+  let startIndex = 0;
+  
+  if (startBracket >= 0 && startBrace >= 0) {
+    startIndex = Math.min(startBracket, startBrace);
+  } else if (startBracket >= 0) {
+    startIndex = startBracket;
+  } else if (startBrace >= 0) {
+    startIndex = startBrace;
+  }
+  
+  const endBracket = cleaned.lastIndexOf(']');
+  const endBrace = cleaned.lastIndexOf('}');
+  let endIndex = cleaned.length;
+  
+  if (endBracket >= 0 && endBrace >= 0) {
+    endIndex = Math.max(endBracket, endBrace) + 1;
+  } else if (endBracket >= 0) {
+    endIndex = endBracket + 1;
+  } else if (endBrace >= 0) {
+    endIndex = endBrace + 1;
+  }
+  
+  return cleaned.substring(startIndex, endIndex);
+}
+
+/**
  * Extract JSON from AI response which might contain markdown or extra text
  * @param response The AI response text
  * @returns The extracted JSON string or null if no JSON found
  */
 function extractJsonFromResponse(response: string): string | null {
+  // First, remove markdown code blocks if present
+  let cleanedResponse = response.replace(/```json|```/g, '');
+  
   // Try to find JSON array in the response
-  const arrayMatch = response.match(/\[\s*{[\s\S]*}\s*\]/);
+  const arrayMatch = cleanedResponse.match(/\[\s*{[\s\S]*}\s*\]/);
   if (arrayMatch) {
     return arrayMatch[0];
   }
   
   // If no array found, look for a JSON object
-  const objectMatch = response.match(/{[\s\S]*}/);
+  const objectMatch = cleanedResponse.match(/{[\s\S]*}/);
   if (objectMatch) {
     // Wrap the object in an array
     return `[${objectMatch[0]}]`;
@@ -381,12 +436,10 @@ function extractJsonFromResponse(response: string): string | null {
   const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch && codeBlockMatch[1]) {
     const codeContent = codeBlockMatch[1].trim();
-    // Check if the extracted code content is JSON
-    try {
-      JSON.parse(codeContent);
+    // Check if the extracted code content looks like JSON
+    if ((codeContent.startsWith('{') && codeContent.endsWith('}')) || 
+        (codeContent.startsWith('[') && codeContent.endsWith(']'))) {
       return codeContent;
-    } catch (e) {
-      // Not valid JSON, continue with other extraction methods
     }
   }
   

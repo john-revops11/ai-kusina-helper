@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -480,11 +479,11 @@ Make sure to include at least 4-8 ingredients per recipe and 4-6 detailed cookin
         return null;
       }
       
-      if (!Array.isArray(recipe)) {
-        return [transformToImportFormat(recipe)];
+      if (Array.isArray(recipe)) {
+        return recipe;
       }
       
-      return recipe.map(r => transformToImportFormat(r));
+      return [transformToImportFormat(recipe)];
     } catch (error) {
       console.error("Error in generateRecipesFromPrompt:", error);
       throw error;
