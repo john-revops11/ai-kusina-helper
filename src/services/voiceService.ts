@@ -31,6 +31,11 @@ export const voiceService = {
   sequenceMode: false,
 
   /**
+   * Whether user has granted permission for autoplay
+   */
+  permissionGranted: false,
+
+  /**
    * The last step number that was spoken
    * Used for sequence mode to ensure steps are followed in order
    */
@@ -43,6 +48,11 @@ export const voiceService = {
     this.enabled = value;
     // Save preference to localStorage
     localStorage.setItem('voiceGuidanceEnabled', value ? 'true' : 'false');
+    
+    // Reset permission if voice is disabled
+    if (!value) {
+      this.permissionGranted = false;
+    }
   },
 
   /**
@@ -54,6 +64,15 @@ export const voiceService = {
     localStorage.setItem('voiceSequenceModeEnabled', value ? 'true' : 'false');
     // Reset last spoken step when toggling sequence mode
     this.lastSpokenStep = 0;
+  },
+  
+  /**
+   * Set whether permission is granted for autoplay
+   */
+  setPermissionGranted(value: boolean) {
+    this.permissionGranted = value;
+    // Save permission preference to localStorage
+    localStorage.setItem('voicePermissionGranted', value ? 'true' : 'false');
   },
   
   /**
@@ -72,7 +91,47 @@ export const voiceService = {
       this.sequenceMode = savedSequenceMode === 'true';
     }
     
+    // Load permission preference from localStorage
+    const savedPermission = localStorage.getItem('voicePermissionGranted');
+    if (savedPermission !== null) {
+      this.permissionGranted = savedPermission === 'true';
+    }
+    
     return this.enabled;
+  },
+  
+  /**
+   * Request permission from user for voice guidance
+   * @returns Promise that resolves to boolean indicating if permission was granted
+   */
+  async requestPermission(): Promise<boolean> {
+    return new Promise((resolve) => {
+      // If permission already granted, don't ask again
+      if (this.permissionGranted) {
+        resolve(true);
+        return;
+      }
+      
+      // Create toast with actions for permission request
+      toast("Allow voice guidance?", {
+        description: "Cookerist would like to speak recipe instructions",
+        action: {
+          label: "Allow",
+          onClick: () => {
+            this.setPermissionGranted(true);
+            resolve(true);
+          }
+        },
+        cancel: {
+          label: "Deny",
+          onClick: () => {
+            resolve(false);
+          }
+        },
+        duration: 10000, // Give user time to decide
+        onDismiss: () => resolve(false)
+      });
+    });
   },
   
   /**
@@ -101,6 +160,15 @@ export const voiceService = {
       }
       // Update last spoken step
       this.lastSpokenStep = options.stepNumber;
+    }
+    
+    // Request permission before speaking (if not forced)
+    if (!this.permissionGranted && !options?.force) {
+      const granted = await this.requestPermission();
+      if (!granted) {
+        console.log('Voice permission denied by user');
+        return;
+      }
     }
     
     // Default options

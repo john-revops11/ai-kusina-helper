@@ -10,6 +10,7 @@ import { openaiService } from '@/services/openaiService';
 import { aiProviderService } from '@/services/aiProviderService';
 import { toast } from 'sonner';
 import AIProviderInfo from '@/components/AIProviderInfo';
+import voiceService from '@/services/voiceService';
 
 type Message = {
   id: string;
@@ -89,15 +90,19 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
       }
       
       // Add AI response to messages
-      setMessages((prev) => [
-        ...prev, 
-        {
-          id: (Date.now() + 1).toString(),
-          text: aiResponse,
-          isUser: false,
-          timestamp: new Date()
-        }
-      ]);
+      const aiResponseMessage = {
+        id: (Date.now() + 1).toString(),
+        text: aiResponse,
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setMessages((prev) => [...prev, aiResponseMessage]);
+      
+      // Only speak the AI response if voice guidance is enabled and permission granted
+      if (voiceService.enabled && voiceService.permissionGranted) {
+        voiceService.speak(aiResponse);
+      }
     } catch (error) {
       console.error("Error getting AI response:", error);
       toast("Failed to get a response from the AI assistant");
@@ -106,12 +111,21 @@ const AIChatBox: React.FC<AIChatBoxProps> = ({ recipeContext }) => {
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
       setIsRecording(false);
       toast("Voice recording stopped");
       // In a real app, this would process the voice recording
     } else {
+      // Request voice permission first if needed
+      if (voiceService.enabled && !voiceService.permissionGranted) {
+        const granted = await voiceService.requestPermission();
+        if (!granted) {
+          toast("Voice permission is needed for voice search");
+          return;
+        }
+      }
+      
       setIsRecording(true);
       toast("Voice search started. Speak clearly...");
       // In a real app, this would start voice recording

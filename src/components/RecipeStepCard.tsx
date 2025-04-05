@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,9 +74,10 @@ const RecipeStepCard: React.FC<RecipeStepCardProps> = ({
   const handleToggleVoice = () => {
     onToggleVoice();
     
-    // If enabling voice, immediately speak the instruction
+    // If enabling voice, immediately request permission and speak the instruction
     if (!voiceEnabled && isActive) {
       const announcement = `Step ${step.number}. ${step.instruction}`;
+      // The force:true will ensure it speaks after permission is granted
       voiceService.speak(announcement, { force: true, stepNumber: step.number });
     }
   };
