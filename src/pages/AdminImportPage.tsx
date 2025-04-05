@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -12,7 +11,8 @@ import {
   Plus,
   Trash2,
   FileWarning,
-  Download
+  Download,
+  Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { convertToDownloadableJSON, recipeImportTemplate } from '@/data/mockData';
+import { aiJsonRepairService } from '@/services/aiJsonRepairService';
+import { aiProviderService } from '@/services/aiProviderService';
 
 type ImportedRecipe = {
   recipeName: string;
@@ -61,6 +63,7 @@ const AdminImportPage = () => {
   const [duplicateRecipes, setDuplicateRecipes] = useState<string[]>([]);
   const [isDeduplicating, setIsDeduplicating] = useState(false);
   const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
+  const [isFixingWithAI, setIsFixingWithAI] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -155,7 +158,7 @@ const AdminImportPage = () => {
 
   const deduplicateRecipes = () => {
     if (!jsonData || !validationResult?.isValid) {
-      toast.error('Please provide valid JSON data first');
+      toast("Please provide valid JSON data first");
       return;
     }
     
@@ -187,7 +190,7 @@ const AdminImportPage = () => {
       toast.success(`Removed ${recipes.length - uniqueRecipes.length} duplicate recipes`);
     } catch (error) {
       console.error('Error deduplicating recipes:', error);
-      toast.error('Failed to deduplicate recipes');
+      toast("Failed to deduplicate recipes");
     } finally {
       setIsDeduplicating(false);
     }
@@ -195,7 +198,7 @@ const AdminImportPage = () => {
 
   const importRecipes = async () => {
     if (!jsonData || !validationResult?.isValid) {
-      toast.error('Please provide valid JSON data first');
+      toast("Please provide valid JSON data first");
       return;
     }
     
@@ -245,7 +248,7 @@ const AdminImportPage = () => {
       toast.success(`Import completed: ${successCount} added, ${updateCount} updated, ${skipCount} skipped, ${errorCount} failed`);
     } catch (error) {
       console.error('Error during import:', error);
-      toast.error('Failed to import recipes');
+      toast.error("Failed to import recipes");
     } finally {
       setIsProcessing(false);
     }
@@ -349,6 +352,35 @@ const AdminImportPage = () => {
     validateJsonData(templateJson);
   };
 
+  const handleFixWithAI = async () => {
+    if (!jsonData) {
+      toast("Please provide JSON data first");
+      return;
+    }
+    
+    setIsFixingWithAI(true);
+    
+    try {
+      const currentProvider = aiProviderService.getCurrentProvider();
+      toast(`Using ${currentProvider} to fix JSON data...`);
+      
+      const fixedJson = await aiJsonRepairService.repairJson(jsonData);
+      
+      setJsonData(fixedJson);
+      
+      validateJsonData(fixedJson);
+      
+      toast.success("AI successfully repaired the JSON data");
+    } catch (error) {
+      console.error("Error fixing JSON with AI:", error);
+      toast.error("Failed to repair JSON with AI", {
+        description: (error as Error).message
+      });
+    } finally {
+      setIsFixingWithAI(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-3xl pb-20">
       <Link to="/admin" className="flex items-center gap-1 mb-4 text-sm text-muted-foreground hover:text-foreground">
@@ -428,17 +460,35 @@ const AdminImportPage = () => {
             />
             
             <div className="flex items-center justify-between mt-2">
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <Button variant="outline" className="relative">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Upload JSON File
-                </Button>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Button variant="outline" className="relative">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Upload JSON File
+                  </Button>
+                </div>
+                
+                {validationResult && !validationResult.isValid && (
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={handleFixWithAI}
+                    disabled={isFixingWithAI || !jsonData}
+                  >
+                    {isFixingWithAI ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Wand2 size={16} />
+                    )}
+                    Fix with AI
+                  </Button>
+                )}
               </div>
               
               {validationResult && (
