@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import ShoppingItem, { ShoppingItem } from './ShoppingItem';
+import ShoppingItem from './ShoppingItem';
+import { type ShoppingItem as ShoppingItemType } from './ShoppingItem';
 
 interface ShoppingItemsListProps {
-  items: ShoppingItem[];
+  items: ShoppingItemType[];
   onToggleCheck: (id: string) => void;
   onRemoveItem: (id: string) => void;
 }
@@ -21,7 +22,7 @@ const ShoppingItemsList: React.FC<ShoppingItemsListProps> = ({
     }
     groups[item.category].push(item);
     return groups;
-  }, {} as Record<string, ShoppingItem[]>);
+  }, {} as Record<string, ShoppingItemType[]>);
 
   // Sort categories
   const sortedCategories = Object.keys(groupedItems).sort();
