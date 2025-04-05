@@ -30,10 +30,7 @@ const ExplorePage = () => {
         setRecipes(recipesData);
       } catch (error) {
         console.error('Error loading data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load recipes. Please try again.',
-        });
+        toast("Failed to load recipes. Please try again.");
       } finally {
         setIsLoading(false);
       }

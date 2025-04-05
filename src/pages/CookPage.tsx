@@ -25,9 +25,7 @@ const CookPage = () => {
         setRecipes(recipesData);
       } catch (error) {
         console.error('Error loading recipes:', error);
-        toast({
-          description: "Failed to load recipes. Please try again.",
-        });
+        toast("Failed to load recipes. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -48,14 +46,10 @@ const CookPage = () => {
   const handleRestartCooking = () => {
     if (activeCookingId) {
       // In a real app, this would reset cooking progress in the database
-      toast({
-        description: "Cooking progress has been reset.",
-      });
+      toast("Cooking progress has been reset.");
       setActiveCookingId(null);
     } else {
-      toast({
-        description: "No active cooking session found.",
-      });
+      toast("No active cooking session found.");
     }
   };
 
