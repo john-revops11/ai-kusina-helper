@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -10,10 +11,11 @@ import {
   RefreshCw,
   Plus,
   Trash2,
-  FileWarning
+  FileWarning,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { database, ref, set, remove } from '@/services/firebase';
@@ -23,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { convertToDownloadableJSON, recipeImportTemplate } from '@/data/mockData';
 
 type ImportedRecipe = {
   recipeName: string;
@@ -30,6 +33,10 @@ type ImportedRecipe = {
   culture: string;
   category: string;
   imageUrl: string;
+  prepTime?: string;
+  cookTime?: string;
+  difficulty?: string;
+  servings?: number;
   steps: string[];
   ingredients: {
     ingredientName: string;
@@ -53,6 +60,7 @@ const AdminImportPage = () => {
   const [importMode, setImportMode] = useState<ImportMode>('update');
   const [duplicateRecipes, setDuplicateRecipes] = useState<string[]>([]);
   const [isDeduplicating, setIsDeduplicating] = useState(false);
+  const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -258,10 +266,10 @@ const AdminImportPage = () => {
       title: importedRecipe.recipeName,
       description: importedRecipe.description,
       category: importedRecipe.category,
-      prepTime: '30 mins',
-      cookTime: '45 mins',
-      difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard',
-      servings: 4,
+      prepTime: importedRecipe.prepTime || '30 mins',
+      cookTime: importedRecipe.cookTime || '45 mins',
+      difficulty: importedRecipe.difficulty || 'Medium' as 'Easy' | 'Medium' | 'Hard',
+      servings: importedRecipe.servings || 4,
       imageUrl: importedRecipe.imageUrl || `https://source.unsplash.com/random/?philippine,${importedRecipe.recipeName.toLowerCase().replace(/ /g, ',')}`,
       instructions: importedRecipe.steps.join('\n')
     };
@@ -309,6 +317,38 @@ const AdminImportPage = () => {
     }
   };
 
+  const downloadTemplate = () => {
+    setIsGeneratingTemplate(true);
+    try {
+      const jsonString = convertToDownloadableJSON();
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'recipe_template.json';
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Template downloaded successfully');
+      }, 100);
+    } catch (error) {
+      console.error('Error generating template:', error);
+      toast.error('Failed to generate template');
+    } finally {
+      setIsGeneratingTemplate(false);
+    }
+  };
+
+  const fillWithTemplateData = () => {
+    const templateJson = JSON.stringify(recipeImportTemplate.recipes, null, 2);
+    setJsonData(templateJson);
+    validateJsonData(templateJson);
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-3xl pb-20">
       <Link to="/admin" className="flex items-center gap-1 mb-4 text-sm text-muted-foreground hover:text-foreground">
@@ -325,6 +365,31 @@ const AdminImportPage = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-medium">Template</h3>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={downloadTemplate}
+                disabled={isGeneratingTemplate}
+                className="flex items-center gap-2"
+              >
+                {isGeneratingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                Download Template
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fillWithTemplateData}
+                className="flex items-center gap-2"
+              >
+                <FileText size={14} />
+                View Example
+              </Button>
+            </div>
+          </div>
+          
           <div className="bg-muted p-4 rounded-lg text-sm">
             <p>This utility imports recipe data in bulk from a JSON file or pasted text.</p>
             <p className="mt-2">Expected format:</p>
@@ -335,6 +400,10 @@ const AdminImportPage = () => {
     "description": "Description",
     "culture": "Culture",
     "category": "Category",
+    "prepTime": "30 mins",
+    "cookTime": "45 mins", 
+    "difficulty": "Easy|Medium|Hard",
+    "servings": 4,
     "imageUrl": "https://example.com/image.jpg",
     "steps": ["Step 1", "Step 2"],
     "ingredients": [

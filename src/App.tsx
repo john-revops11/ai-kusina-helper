@@ -13,6 +13,7 @@ import CookingHistoryPage from "./pages/CookingHistoryPage";
 import ShoppingListPage from "./pages/ShoppingListPage";
 import AdminPage from "./pages/AdminPage";
 import AdminRecipesPage from "./pages/AdminRecipesPage"; 
+import AdminImportPage from "./pages/AdminImportPage"; 
 import NotFound from "./pages/NotFound";
 
 // Import agent system to initialize it
@@ -39,6 +40,7 @@ function App() {
         {/* Admin routes */}
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/recipes" element={<AdminRecipesPage />} />
+        <Route path="/admin/import" element={<AdminImportPage />} />
 
         {/* 404 fallback */}
         <Route path="*" element={<NotFound />} />

@@ -1,26 +1,55 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MobileNavBar from '@/components/MobileNavBar';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CategoryList from '@/components/CategoryList';
 import RecipeCard from '@/components/RecipeCard';
 import SearchBar from '@/components/SearchBar';
-import { mockRecipes, mockCategories } from '@/data/mockData';
+import { fetchRecipes, fetchCategories } from '@/services/recipeService';
+import { toast } from "sonner";
 
 const ExplorePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [categories, setCategories] = useState<string[]>(['All']);
+  const [recipes, setRecipes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch categories
+        const categoriesData = await fetchCategories();
+        setCategories(['All', ...categoriesData]);
+        
+        // Fetch recipes
+        const recipesData = await fetchRecipes();
+        setRecipes(recipesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load recipes. Please try again.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
   
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
 
   // Filter recipes based on search query and category
-  const filteredRecipes = mockRecipes.filter(recipe => {
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || recipe.category === activeCategory;
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesSearch = recipe?.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || recipe?.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -43,7 +72,7 @@ const ExplorePage = () => {
         <section>
           <h2 className="section-title mb-3">Categories</h2>
           <CategoryList 
-            categories={mockCategories} 
+            categories={categories} 
             activeCategory={activeCategory} 
             onSelectCategory={setActiveCategory} 
           />
@@ -58,11 +87,23 @@ const ExplorePage = () => {
           </TabsList>
           
           <TabsContent value="recipes" className="mt-6">
-            <div className="grid grid-cols-2 gap-4">
-              {filteredRecipes.map(recipe => (
-                <RecipeCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredRecipes.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {filteredRecipes.map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-6">
+                <p className="text-muted-foreground">
+                  No recipes found matching your criteria
+                </p>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="ingredients" className="mt-6">
