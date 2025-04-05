@@ -19,7 +19,7 @@ const ShoppingListHeader: React.FC<ShoppingListHeaderProps> = ({
 
   return (
     <header className="p-3 md:p-5 border-b">
-      <h1 className={`${isMobile ? "text-lg" : "text-2xl"} font-bold text-kusina-green mb-2`}>
+      <h1 className={`${isMobile ? "text-lg" : "text-2xl"} font-bold text-kusina-green mb-2 break-words`}>
         Shopping List
       </h1>
       <div className="flex items-center justify-between flex-wrap gap-2">

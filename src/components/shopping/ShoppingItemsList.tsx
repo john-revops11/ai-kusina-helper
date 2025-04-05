@@ -44,7 +44,7 @@ const ShoppingItemsList: React.FC<ShoppingItemsListProps> = ({
         <div className="space-y-4 pr-2">
           {sortedCategories.map(category => (
             <div key={category} className="mb-5">
-              <h2 className="font-medium text-xs md:text-sm text-muted-foreground mb-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10">
+              <h2 className="font-medium text-xs md:text-sm text-muted-foreground mb-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10 break-words">
                 {category}
               </h2>
               <ul className="space-y-2">

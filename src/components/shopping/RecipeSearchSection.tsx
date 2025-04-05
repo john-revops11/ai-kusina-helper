@@ -23,7 +23,7 @@ const RecipeSearchSection: React.FC<RecipeSearchSectionProps> = ({
 
   return (
     <div className="space-y-2 md:space-y-3">
-      <h2 className={`${isMobile ? "text-sm font-medium" : "text-base font-semibold"} text-kusina-green truncate`}>
+      <h2 className={`${isMobile ? "text-sm font-medium" : "text-base font-semibold"} text-kusina-green truncate max-w-full`}>
         Add ingredients from recipe
       </h2>
       <EnhancedSearchBar

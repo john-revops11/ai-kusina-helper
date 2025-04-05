@@ -9,6 +9,7 @@ import RecipeCard from '@/components/RecipeCard';
 import SearchBar from '@/components/SearchBar';
 import { fetchRecipes, fetchCategories } from '@/services/recipeService';
 import { toast } from "sonner";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ExplorePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +17,7 @@ const ExplorePage = () => {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [recipes, setRecipes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const loadData = async () => {
@@ -54,7 +56,7 @@ const ExplorePage = () => {
     <div className="pb-20 min-h-screen">
       {/* Header */}
       <header className="p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Explore</h1>
+        <h1 className={`${isMobile ? "text-xl" : "text-2xl"} font-bold text-kusina-green`}>Explore</h1>
         <Button variant="outline" size="icon">
           <Filter size={18} />
         </Button>
@@ -67,7 +69,7 @@ const ExplorePage = () => {
 
         {/* Categories */}
         <section>
-          <h2 className="section-title mb-3">Categories</h2>
+          <h2 className="text-lg font-semibold text-kusina-green mb-3 md:text-xl">Categories</h2>
           <CategoryList 
             categories={categories} 
             activeCategory={activeCategory} 
@@ -105,8 +107,8 @@ const ExplorePage = () => {
           
           <TabsContent value="ingredients" className="mt-6">
             <div className="text-center p-6">
-              <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg font-medium mb-2 break-words">Coming Soon</h3>
+              <p className="text-muted-foreground text-sm md:text-base">
                 Explore Filipino ingredients, their uses, and where to find them
               </p>
             </div>
@@ -114,8 +116,8 @@ const ExplorePage = () => {
           
           <TabsContent value="techniques" className="mt-6">
             <div className="text-center p-6">
-              <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg font-medium mb-2 break-words">Coming Soon</h3>
+              <p className="text-muted-foreground text-sm md:text-base">
                 Learn traditional Filipino cooking techniques and methods
               </p>
             </div>

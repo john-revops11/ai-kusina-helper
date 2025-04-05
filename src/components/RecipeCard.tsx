@@ -37,18 +37,18 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onClick }) => {
         </Badge>
       </div>
       <div className="p-4 border-t-0 border-2 border-kusina-cream rounded-b-lg bg-gradient-to-b from-white to-kusina-light-green/30">
-        <h3 className="font-bold text-lg line-clamp-1 text-kusina-green">
+        <h3 className="font-bold text-kusina-green line-clamp-2 min-h-[3rem]">
           <span className="font-baybayin tracking-wide mr-1">{recipe.title.charAt(0)}</span>
-          {recipe.title.slice(1)}
+          <span className="text-base md:text-lg break-words">{recipe.title.slice(1)}</span>
         </h3>
-        <div className="flex justify-between mt-2 text-sm text-kusina-green/80">
+        <div className="flex justify-between mt-2 text-xs md:text-sm text-kusina-green/80">
           <div className="flex items-center gap-1">
             <Clock size={14} className="text-kusina-orange" />
-            <span>{recipe.prepTime}</span>
+            <span className="truncate">{recipe.prepTime}</span>
           </div>
           <div className="flex items-center gap-1">
             <Utensils size={14} className="text-kusina-green" />
-            <span>{recipe.category}</span>
+            <span className="truncate">{recipe.category}</span>
           </div>
         </div>
       </div>
