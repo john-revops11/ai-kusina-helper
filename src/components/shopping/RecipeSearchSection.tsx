@@ -20,7 +20,7 @@ const RecipeSearchSection: React.FC<RecipeSearchSectionProps> = ({
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-medium text-kusina-green">Add ingredients from recipe</h2>
+      <h2 className="text-sm md:text-base font-medium text-kusina-green">Add ingredients from recipe</h2>
       <EnhancedSearchBar
         onSearch={handleSearch}
         onSelectRecipe={onSelectRecipe}

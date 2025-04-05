@@ -8,10 +8,12 @@ import ShoppingItemsList from '@/components/shopping/ShoppingItemsList';
 import { useShoppingList } from '@/hooks/useShoppingList';
 import { fetchRecipes } from '@/services/recipeService';
 import type { Recipe } from '@/components/RecipeCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ShoppingListPage = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+  const isMobile = useIsMobile();
   
   const {
     shoppingList,
@@ -44,7 +46,7 @@ const ShoppingListPage = () => {
   const checkedItems = shoppingList.filter(item => item.checked).length;
 
   return (
-    <div className="pb-20 min-h-screen">
+    <div className="pb-20 md:pb-10 min-h-screen">
       {/* Header */}
       <ShoppingListHeader 
         totalItems={totalItems} 
@@ -53,7 +55,7 @@ const ShoppingListPage = () => {
       />
 
       {/* Main Content */}
-      <main className="px-4 py-4 space-y-6">
+      <main className={`px-4 md:px-6 py-4 space-y-${isMobile ? '4' : '6'}`}>
         {/* Recipe Search */}
         <RecipeSearchSection 
           onSelectRecipe={handleRecipeSelect} 
