@@ -9,6 +9,7 @@ import SearchBar from '@/components/SearchBar';
 import RecipeCard from '@/components/RecipeCard';
 import { mockRecipes } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const CookPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,11 +132,42 @@ const CookPage = () => {
         {/* All Recipes */}
         <section>
           <h2 className="section-title mb-3">All Recipes</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {filteredRecipes.map(recipe => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
+          
+          <Tabs defaultValue="all" className="mb-4">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="mains">Mains</TabsTrigger>
+              <TabsTrigger value="desserts">Desserts</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all">
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {filteredRecipes.map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} />
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="mains">
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {filteredRecipes
+                  .filter(recipe => recipe.category === "Main Course" || recipe.category === "Main Dish")
+                  .map(recipe => (
+                    <RecipeCard key={recipe.id} recipe={recipe} />
+                  ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="desserts">
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {filteredRecipes
+                  .filter(recipe => recipe.category === "Dessert")
+                  .map(recipe => (
+                    <RecipeCard key={recipe.id} recipe={recipe} />
+                  ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </section>
       </main>
 

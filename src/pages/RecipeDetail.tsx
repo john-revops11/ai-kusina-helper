@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -6,24 +7,12 @@ import {
   Utensils, 
   ChevronDown, 
   ChevronUp,
-  Volume2, 
-  VolumeX,
-  RefreshCw,
-  ListOrdered,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import MobileNavBar from '@/components/MobileNavBar';
-import IngredientItem from '@/components/IngredientItem';
-import RecipeStepCard from '@/components/RecipeStepCard';
-import AIChatBox from '@/components/AIChatBox';
+import RecipeTabs from '@/components/RecipeTabs';
 import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
 import voiceService from '@/services/voiceService';
 import { 
@@ -37,7 +26,7 @@ import { Ingredient } from '@/components/IngredientItem';
 import { RecipeStep } from '@/components/RecipeStepCard';
 import agentOrchestrator from '@/agents';
 
-const RecipeDetail = () => {
+const RecipeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
@@ -59,10 +48,7 @@ const RecipeDetail = () => {
   
   const timerRef = useRef<number | null>(null);
 
-  const getLocalPlaceholder = () => {
-    return "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3e%3crect width='100' height='100' fill='%23f5f5f5'/%3e%3cpath d='M30,40 L70,40 L70,60 L30,60 Z' fill='%23ccc'/%3e%3cpath d='M50,30 C55.5228,30 60,34.4772 60,40 C60,45.5228 55.5228,50 50,50 C44.4772,50 40,45.5228 40,40 C40,34.4772 44.4772,30 50,30 Z' fill='%23ccc'/%3e%3cpath d='M70,60 C70,50 80,50 80,60 L80,70 L70,70 Z' fill='%23ccc'/%3e%3cpath d='M30,60 C30,50 20,50 20,60 L20,70 L30,70 Z' fill='%23ccc'/%3e%3c/svg%3e";
-  };
-
+  // Load recipe data
   useEffect(() => {
     const loadRecipeData = async () => {
       if (!id) return;
@@ -122,6 +108,7 @@ const RecipeDetail = () => {
     loadRecipeData();
   }, [id, toast, voiceEnabled]);
 
+  // Create new conversation
   useEffect(() => {
     if (recipe) {
       const newConversationId = agentOrchestrator.createNewConversation();
@@ -129,6 +116,7 @@ const RecipeDetail = () => {
     }
   }, [recipe]);
 
+  // Timer effect
   useEffect(() => {
     if (timerRunning && remainingTime > 0) {
       timerRef.current = window.setTimeout(() => {
@@ -277,6 +265,12 @@ const RecipeDetail = () => {
     setAiAssistantOpen(!aiAssistantOpen);
   };
 
+  const addToShoppingList = (ingredient: Ingredient) => {
+    toast({
+      description: `${ingredient.name} added to shopping list`
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="pb-20 min-h-screen p-4">
@@ -329,125 +323,30 @@ const RecipeDetail = () => {
       </div>
 
       <div className="p-4 space-y-6">
-        <Accordion type="single" collapsible defaultValue="ingredients">
-          <AccordionItem value="ingredients" className="border-b-0">
-            <AccordionTrigger className="py-2">
-              <h2 className="section-title">Ingredients</h2>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-1">
-                {ingredients.map(ingredient => (
-                  <div key={ingredient.id}>
-                    <IngredientItem
-                      ingredient={ingredient}
-                      isChecked={!!checkedIngredients[ingredient.id]}
-                      onToggle={() => toggleIngredientCheck(ingredient.id)}
-                      onViewSubstitutions={
-                        ingredient.hasSubstitutions 
-                          ? () => toggleSubstitutesView(ingredient.id) 
-                          : undefined
-                      }
-                      showAddToList={true}
-                      onAddToList={() => {
-                        toast({
-                          description: `${ingredient.name} added to shopping list`
-                        });
-                      }}
-                    />
-                    
-                    {ingredient.hasSubstitutions && showSubstitutes[ingredient.id] && (
-                      <div className="ml-8 mt-1 mb-2 p-2 bg-muted rounded-md text-sm">
-                        <p className="font-medium text-xs mb-1">Substitutes:</p>
-                        <ul className="space-y-1">
-                          {substitutes[ingredient.id]?.map((sub, idx) => (
-                            <li key={idx} className="text-xs text-muted-foreground">• {sub}</li>
-                          )) || (
-                            <li className="text-xs text-muted-foreground">Loading substitutes...</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="section-title">Cooking Steps</h2>
-            <div className="flex gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs flex items-center gap-1"
-                onClick={restartCooking}
-              >
-                <RefreshCw size={14} /> Restart
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={`text-xs ${sequenceMode ? 'text-primary' : ''}`}
-                onClick={toggleSequenceMode}
-                title={sequenceMode ? "Sequence mode on" : "Sequence mode off"}
-              >
-                <ListOrdered size={16} />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={`text-xs ${voiceEnabled ? 'text-primary' : ''}`}
-                onClick={toggleVoice}
-              >
-                {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {steps
-              .sort((a, b) => a.number - b.number)
-              .map((step, index) => (
-                <RecipeStepCard
-                  key={step.id}
-                  step={step}
-                  isActive={index === activeStep}
-                  isCompleted={!!completedSteps[step.id]}
-                  onStartTimer={startTimer}
-                  onStopTimer={stopTimer}
-                  onRestartTimer={restartTimer}
-                  timerRunning={timerRunning && index === activeStep}
-                  remainingTime={index === activeStep ? remainingTime : step.timeInMinutes * 60}
-                  onToggleVoice={toggleVoice}
-                  voiceEnabled={voiceEnabled}
-                  sequenceMode={sequenceMode}
-                />
-              ))}
-          </div>
-          
-          <div className="flex flex-col gap-2 mt-4">
-            {activeStep < steps.length && (
-              <Button 
-                className="w-full" 
-                onClick={() => markStepComplete(steps[activeStep].id)}
-              >
-                {activeStep === steps.length - 1 ? 'Finish Recipe' : 'Mark Step Complete'}
-              </Button>
-            )}
-            
-            {activeStep > 0 || Object.keys(completedSteps).length > 0 ? (
-              <Button 
-                variant="outline"
-                className="w-full" 
-                onClick={restartCooking}
-              >
-                <RefreshCw size={16} className="mr-2" /> Restart Cooking
-              </Button>
-            ) : null}
-          </div>
-        </div>
+        {/* Tabs Component */}
+        <RecipeTabs 
+          ingredients={ingredients}
+          steps={steps}
+          checkedIngredients={checkedIngredients}
+          toggleIngredientCheck={toggleIngredientCheck}
+          toggleSubstitutesView={toggleSubstitutesView}
+          showSubstitutes={showSubstitutes}
+          substitutes={substitutes}
+          activeStep={activeStep}
+          timerRunning={timerRunning}
+          remainingTime={remainingTime}
+          completedSteps={completedSteps}
+          startTimer={startTimer}
+          stopTimer={stopTimer}
+          restartTimer={restartTimer}
+          markStepComplete={markStepComplete}
+          restartCooking={restartCooking}
+          toggleVoice={toggleVoice}
+          voiceEnabled={voiceEnabled}
+          toggleSequenceMode={toggleSequenceMode}
+          sequenceMode={sequenceMode}
+          onAddToList={addToShoppingList}
+        />
 
         <div className="fixed bottom-20 right-4 z-40">
           <Button
@@ -478,4 +377,4 @@ const RecipeDetail = () => {
   );
 };
 
-export default RecipeDetail;
+export default RecipeDetailPage;

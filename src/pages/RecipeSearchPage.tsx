@@ -15,6 +15,7 @@ import type { Ingredient } from '@/components/IngredientItem';
 import EnhancedAIChatBox from '@/components/EnhancedAIChatBox';
 import agentOrchestrator from '@/agents';
 import AIProviderInfo from '@/components/AIProviderInfo';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type RecipeDetail = Recipe & {
   description: string;
@@ -37,6 +38,7 @@ const RecipeSearchPage = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [conversationId, setConversationId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('search');
   
   useEffect(() => {
     const loadRecipes = async () => {
@@ -266,14 +268,54 @@ const RecipeSearchPage = () => {
 
       <main className="p-4 space-y-6">
         <div className="max-w-md mx-auto">
-          <EnhancedSearchBar 
-            onSearch={handleSearch}
-            onSelectRecipe={handleSelectRecipe}
-            onSearchExternal={handleSearchExternal}
-            recipes={recipes}
-            placeholder="Search for recipes..."
-            isSearching={isLoading || isSearchingOnline}
-          />
+          <Tabs defaultValue="search" onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="search">Search</TabsTrigger>
+              <TabsTrigger value="cuisine">By Cuisine</TabsTrigger>
+              <TabsTrigger value="meal">By Meal</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="search" className="mt-2">
+              <EnhancedSearchBar 
+                onSearch={handleSearch}
+                onSelectRecipe={handleSelectRecipe}
+                onSearchExternal={handleSearchExternal}
+                recipes={recipes}
+                placeholder="Search for recipes..."
+                isSearching={isLoading || isSearchingOnline}
+              />
+            </TabsContent>
+            
+            <TabsContent value="cuisine" className="mt-2">
+              <div className="grid grid-cols-2 gap-2">
+                {['Filipino', 'Italian', 'Japanese', 'Mexican', 'Indian', 'American'].map(cuisine => (
+                  <Button 
+                    key={cuisine} 
+                    variant="outline" 
+                    className="h-16 text-base"
+                    onClick={() => handleSearchExternal(`${cuisine} recipe`)}
+                  >
+                    {cuisine}
+                  </Button>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="meal" className="mt-2">
+              <div className="grid grid-cols-2 gap-2">
+                {['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Appetizer'].map(mealType => (
+                  <Button 
+                    key={mealType} 
+                    variant="outline" 
+                    className="h-16 text-base"
+                    onClick={() => handleSearchExternal(`${mealType} recipe`)}
+                  >
+                    {mealType}
+                  </Button>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="mt-3">
             <p className="text-sm text-muted-foreground">
@@ -281,10 +323,10 @@ const RecipeSearchPage = () => {
                 'Searching for recipes with AI...'
               ) : selectedRecipe ? (
                 'Recipe found!'
-              ) : recipes.length > 0 ? (
+              ) : activeTab === 'search' && recipes.length > 0 ? (
                 'Type a recipe name to search'
               ) : (
-                'No recipes available. Try searching with AI.'
+                activeTab !== 'search' ? 'Select a category above' : 'No recipes available. Try searching with AI.'
               )}
             </p>
           </div>
@@ -300,27 +342,73 @@ const RecipeSearchPage = () => {
               </div>
             </div>
             
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <Badge variant={
-                    selectedRecipe.difficulty === 'Easy' ? 'default' : 
-                    selectedRecipe.difficulty === 'Medium' ? 'outline' : 'destructive'
-                  }>
-                    {selectedRecipe.difficulty}
-                  </Badge>
-                  <div className="text-sm mt-1">Prep: {selectedRecipe.prepTime}</div>
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
+                <TabsTrigger value="steps">Steps</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <Badge variant={
+                      selectedRecipe.difficulty === 'Easy' ? 'default' : 
+                      selectedRecipe.difficulty === 'Medium' ? 'outline' : 'destructive'
+                    }>
+                      {selectedRecipe.difficulty}
+                    </Badge>
+                    <div className="text-sm mt-1">Prep: {selectedRecipe.prepTime}</div>
+                  </div>
+                  
+                  {foundOnline && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+                      Found Online
+                    </Badge>
+                  )}
+                </div>
+                
+                <p className="text-sm text-muted-foreground mb-4">
+                  {selectedRecipe.description || "A delicious recipe to try at home."}
+                </p>
+                
+                <div className="flex items-center justify-between text-sm mb-4">
+                  <span>Cooking time: {selectedRecipe.cookTime || "N/A"}</span>
+                  <span>Servings: {selectedRecipe.servings || "N/A"}</span>
+                </div>
+                
+                <div className="flex space-x-2 pt-4 mt-2 border-t">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 gap-2"
+                    onClick={copyToClipboard}
+                  >
+                    {isCopied ? <Check size={16} /> : <Copy size={16} />}
+                    {isCopied ? 'Copied!' : 'Copy Recipe'}
+                  </Button>
+                  
+                  <Button 
+                    className="flex-1 gap-2"
+                    onClick={viewRecipeDetails}
+                  >
+                    <ChefHat size={16} />
+                    View Full Recipe
+                  </Button>
                 </div>
                 
                 {foundOnline && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
-                    Found Online
-                  </Badge>
+                  <Button 
+                    variant="default" 
+                    className="w-full mt-2"
+                    onClick={handleSaveRecipe}
+                  >
+                    Save Recipe to Collection
+                  </Button>
                 )}
-              </div>
+              </TabsContent>
               
-              <div className="mb-4">
+              <TabsContent value="ingredients" className="p-4">
                 <h3 className="text-sm font-medium mb-2">Ingredients:</h3>
                 <ul className="text-sm space-y-1">
                   {recipeIngredients.map((ingredient) => (
@@ -333,9 +421,9 @@ const RecipeSearchPage = () => {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </TabsContent>
               
-              <div>
+              <TabsContent value="steps" className="p-4">
                 <h3 className="text-sm font-medium mb-2">Steps:</h3>
                 <ol className="text-sm space-y-2">
                   {recipeSteps
@@ -350,37 +438,8 @@ const RecipeSearchPage = () => {
                     </li>
                   ))}
                 </ol>
-              </div>
-              
-              <div className="flex space-x-2 pt-4 mt-2 border-t">
-                <Button 
-                  variant="outline" 
-                  className="flex-1 gap-2"
-                  onClick={copyToClipboard}
-                >
-                  {isCopied ? <Check size={16} /> : <Copy size={16} />}
-                  {isCopied ? 'Copied!' : 'Copy Recipe'}
-                </Button>
-                
-                <Button 
-                  className="flex-1 gap-2"
-                  onClick={viewRecipeDetails}
-                >
-                  <ChefHat size={16} />
-                  View Full Recipe
-                </Button>
-              </div>
-              
-              {foundOnline && (
-                <Button 
-                  variant="default" 
-                  className="w-full mt-2"
-                  onClick={handleSaveRecipe}
-                >
-                  Save Recipe to Collection
-                </Button>
-              )}
-            </CardContent>
+              </TabsContent>
+            </Tabs>
           </Card>
         )}
         
